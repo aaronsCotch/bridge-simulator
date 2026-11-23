@@ -909,11 +909,11 @@ function findDeckSurfaceY(meshes){
 // POSITION JOINTS
 // ========================================
 
-function positionJoint(wrapper,meshes,side){
-
-    wrapper.position.set(0,0,0);
+function positionJoint(wrapper, meshes, side) {
 
     const JOINT_SCALE = 0.01;
+
+    wrapper.position.set(0, 0, 0);
 
     wrapper.scaling.set(
         JOINT_SCALE,
@@ -923,25 +923,24 @@ function positionJoint(wrapper,meshes,side){
 
     wrapper.computeWorldMatrix(true);
 
-    const bounds =
-    calculateBridgeSpaceBounds(meshes);
+    console.log(side + " joint test position:", wrapper.position);
+    console.log(side + " joint meshes:", meshes);
+}function positionJoint(wrapper, meshes, side) {
 
-    if(side==="left"){
-        wrapper.position.x = -bounds.maxX;
-    }else{
-        wrapper.position.x = -bounds.minX;
-    }
+    const JOINT_SCALE = 0.01;
 
-    wrapper.position.y =
-    bridgeDeckLocalY-bounds.maxY;
+    wrapper.position.set(0, 0, 0);
 
-    wrapper.position.z =
-    -bounds.centerZ;
+    wrapper.scaling.set(
+        JOINT_SCALE,
+        JOINT_SCALE,
+        JOINT_SCALE
+    );
 
     wrapper.computeWorldMatrix(true);
 
-    console.log(side+" joint bounds:",bounds);
-    console.log(side+" joint final position:",wrapper.position);
+    console.log(side + " joint test position:", wrapper.position);
+    console.log(side + " joint meshes:", meshes);
 }
 
 // ========================================

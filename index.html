@@ -795,63 +795,59 @@ try{
     splitBridgeGeometry(bridgeMeshes);
 
 
-    // ========================================
-    // LOAD EXPANSION JOINTS
-    // ========================================
+   // ========================================
+// LOAD EXPANSION JOINTS
+// ========================================
 
-    status.textContent = "Loading expansion joints...";
+status.textContent = "Loading expansion joints...";
 
-    const jointMeshes = await importCombinedModel(
-        JOINT_FILE,
-        jointRoot
-    );
+const jointMeshes = await importCombinedModel(
+    JOINT_FILE,
+    jointRoot
+);
 
-    const jointBounds = calculateBounds(jointMeshes);
+// Read the original joint dimensions and position.
+const jointBounds = calculateBounds(jointMeshes);
 
-    jointRoot.scaling.set(
-        modelScale,
-        modelScale,
-        modelScale
-    );
+// Match the joint model to the bridge scale.
+jointRoot.scaling.set(
+    modelScale,
+    modelScale,
+    modelScale
+);
 
-    jointRoot.position.x = bridgeRoot.position.x;
-    jointRoot.position.y = bridgeRoot.position.y;
+jointRoot.position.x = bridgeRoot.position.x;
+jointRoot.position.y = bridgeRoot.position.y;
 
-    const depthCorrection =
-        (bounds.centerZ-jointBounds.centerZ)*modelScale;
+const depthCorrection =
+    (bounds.centerZ-jointBounds.centerZ)*modelScale;
 
-    jointRoot.position.z =
-        bridgeRoot.position.z+depthCorrection;
+jointRoot.position.z =
+    bridgeRoot.position.z+depthCorrection;
 
-    jointRoot.computeWorldMatrix(true);
+jointRoot.computeWorldMatrix(true);
 
-    console.log("Bridge center Z:",bounds.centerZ);
-    console.log("Joint center Z:",jointBounds.centerZ);
-    console.log("Joint depth correction:",depthCorrection);
+status.textContent = "Replacing original joint teeth...";
 
-    status.textContent = "Connecting expansion joints...";
+// Generate the replacement joint components.
+createZipperTeeth(jointMeshes);
 
-    // Create the teeth while the original joint meshes still exist.
-    createZipperTeeth(jointMeshes);
+// REMOVE THE ORIGINAL JOINT GEOMETRY.
+// This prevents the original teeth from remaining visible.
+for(const mesh of jointMeshes){
 
-    // Separate the original joint into moving halves.
-    splitJointGeometry(jointMeshes);
-
-    // Dispose of the empty container without disposing materials.
-    jointRoot.dispose(false,false);
-
-    modelsReady = true;
-
-    status.textContent =
-        "Bridge halves and expansion joints loaded successfully.";
-
-}catch(error){
-
-    console.error("3D MODEL ERROR:",error);
-
-    status.textContent =
-        "MODEL ERROR: "+error.message;
+    if(mesh && !mesh.isDisposed()){
+        mesh.dispose(false,false);
+    }
 }
+
+// Remove the empty joint container.
+jointRoot.dispose(false,false);
+
+modelsReady = true;
+
+status.textContent =
+    "Bridge and replacement expansion joints loaded successfully.";
 
 
 // ========================================

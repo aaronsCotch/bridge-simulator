@@ -300,10 +300,16 @@ try{
     // There is no extra Z offset.
 
     jointRoot.scaling.set(
-        modelScale,
-        modelScale,
-        modelScale
-    );
+    modelScale,
+    modelScale,
+    modelScale
+);
+
+jointRoot.position.x = bridgeRoot.position.x;
+jointRoot.position.y = bridgeRoot.position.y;
+
+// Center the expansion joints along the bridge.
+jointRoot.position.z = -33 * modelScale;
 
     jointRoot.position.copyFrom(sharedPosition);
 

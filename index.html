@@ -686,7 +686,7 @@ jointRoot.scaling.set(
 
 jointRoot.position.x = bridgeRoot.position.x;
 jointRoot.position.y = bridgeRoot.position.y;
-jointRoot.position.z = -33*modelScale;
+jointRoot.position.z = bridgeRoot.position.z;
 
 jointRoot.computeWorldMatrix(true);
 
@@ -702,22 +702,7 @@ status.textContent =
     "Bridge halves and moving expansion joints loaded successfully.";
 
 
-    jointRoot.scaling.set(
-        modelScale,
-        modelScale,
-        modelScale
-    );
-
-    jointRoot.position.x = bridgeRoot.position.x;
-    jointRoot.position.y = bridgeRoot.position.y;
-
-    // Preserve the corrected joint position.
-    // Do NOT overwrite this with sharedPosition.
-
-    jointRoot.position.z = -33*modelScale;
-
-
-    modelsReady = true;
+    
 
     status.textContent =
         "Bridge halves and expansion joints loaded successfully.";

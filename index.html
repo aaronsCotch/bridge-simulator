@@ -231,6 +231,10 @@ const BRIDGE_LENGTH = 50;
 const MODEL_WIDTH = 80;
 const VISUAL_AMPLIFICATION = 30;
 
+// Small inward adjustment to bring the bridge halves closer.
+// This is measured in the bridge model's local units.
+const BASE_CLOSING_OFFSET = 0.35;
+
 // ========================================
 // BABYLON SCENE
 // ========================================
@@ -617,12 +621,12 @@ function splitBridgeGeometry(meshes){
 }
 
 // ========================================
-// ZIPPER-STYLE EXPANSION JOINT TEETH
+// LARGER ZIPPER-STYLE EXPANSION JOINT TEETH
 // ========================================
 
 function createZipperTeeth(jointMeshes){
 
-    console.log("Creating interlocking zipper teeth...");
+    console.log("Creating enlarged interlocking zipper teeth...");
 
     const bounds = calculateBounds(jointMeshes);
 
@@ -656,17 +660,20 @@ function createZipperTeeth(jointMeshes){
 
     }
 
+    // Number of alternating teeth
     const toothCount = 10;
 
     const pitch = jointWidth/toothCount;
 
-    const toothLength = 1.2;
+    // ENLARGED TOOTH DIMENSIONS
 
-    const toothDepth = pitch*0.65;
+    const toothLength = 3.5;
+
+    const toothDepth = pitch*0.90;
 
     const toothHeight = Math.max(
-        0.2,
-        jointHeight*0.4
+        0.4,
+        jointHeight*0.65
     );
 
     const originalMaterial =
@@ -699,14 +706,21 @@ function createZipperTeeth(jointMeshes){
             scene
         );
 
+        // Attach each tooth to its own bridge half.
+        // This makes the teeth move together with the bridge.
+
         tooth.parent = isLeft
             ? leftBridgeRoot
             : rightBridgeRoot;
 
+        // Move the teeth toward the center gap.
+        // Their larger length allows them to overlap
+        // farther into the opposite side of the joint.
+
         tooth.position.x = center.x + (
             isLeft
-                ? toothLength*0.3
-                : -toothLength*0.3
+                ? toothLength*0.25
+                : -toothLength*0.25
         );
 
         tooth.position.y = center.y;
@@ -721,9 +735,10 @@ function createZipperTeeth(jointMeshes){
     }
 
     console.log(
-        "Interlocking zipper teeth created:",
+        "Enlarged interlocking teeth created:",
         toothCount
     );
+
 }
 
 // ========================================
@@ -804,14 +819,14 @@ try{
 
     jointRoot.computeWorldMatrix(true);
 
-    // CREATE REPLACEMENT TEETH
+    // CREATE ENLARGED REPLACEMENT TEETH
 
-    status.textContent = "Creating expansion joints...";
+    status.textContent = "Creating enlarged expansion joints...";
 
     createZipperTeeth(jointMeshes);
 
     // HIDE ORIGINAL JOINT MODEL.
-    // Do not dispose it here because its material
+    // Do not dispose it because its material
     // may be shared with the replacement teeth.
 
     for(const mesh of jointMeshes){
@@ -879,11 +894,14 @@ function updateSimulation(){
 
     if(modelsReady){
 
+        // Keep the bridge halves slightly closer together
+        // while preserving their movement from the sliders.
+
         leftBridgeRoot.position.x =
-            -movementPerSide;
+            BASE_CLOSING_OFFSET-movementPerSide;
 
         rightBridgeRoot.position.x =
-            movementPerSide;
+            -BASE_CLOSING_OFFSET+movementPerSide;
 
     }
 

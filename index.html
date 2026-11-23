@@ -780,8 +780,11 @@ function splitBridgeGeometry(meshes){
 function findDeckSurfaceY(meshes){
 
     const heights = [];
+    const vertexHeights = [];
 
     for(const mesh of meshes){
+
+        if(!mesh || mesh.isDisposed()) continue;
 
         const positions = mesh.getVerticesData(
             BABYLON.VertexBuffer.PositionKind
@@ -794,6 +797,31 @@ function findDeckSurfaceY(meshes){
         mesh.computeWorldMatrix(true);
 
         const world = mesh.getWorldMatrix();
+
+        // Collect vertex heights near the bridge deck.
+
+        for(let i=0;i<positions.length;i+=3){
+
+            const local = new BABYLON.Vector3(
+                positions[i],
+                positions[i+1],
+                positions[i+2]
+            );
+
+            const worldPoint =
+            BABYLON.Vector3.TransformCoordinates(
+                local,
+                world
+            );
+
+            const p = worldToBridge(worldPoint);
+
+            if(Math.abs(p.x)<MODEL_WIDTH*0.45){
+                vertexHeights.push(p.y);
+            }
+        }
+
+        // Try detecting horizontal triangles.
 
         for(let i=0;i<indices.length;i+=3){
 
@@ -818,44 +846,65 @@ function findDeckSurfaceY(meshes){
                 points.push(worldToBridge(worldPoint));
             }
 
-            const a=points[0];
-            const b=points[1];
-            const d=points[2];
-
-            const normal=BABYLON.Vector3.Cross(
-                b.subtract(a),
-                d.subtract(a)
+            const normal = BABYLON.Vector3.Cross(
+                points[1].subtract(points[0]),
+                points[2].subtract(points[0])
             );
 
             if(normal.lengthSquared()<1e-10) continue;
 
             normal.normalize();
 
-            const centerX=(a.x+b.x+d.x)/3;
-            const centerY=(a.y+b.y+d.y)/3;
+            const centerX =
+            (points[0].x+points[1].x+points[2].x)/3;
+
+            const centerY =
+            (points[0].y+points[1].y+points[2].y)/3;
 
             if(
                 Math.abs(normal.y)>0.85 &&
-                Math.abs(centerX)<MODEL_WIDTH*0.5
+                Math.abs(centerX)<MODEL_WIDTH*0.45
             ){
-
                 heights.push(centerY);
             }
         }
     }
 
-    if(!heights.length){
+    // Preferred method: use detected horizontal surfaces.
 
-        throw new Error(
-            "Could not detect the bridge deck surface."
-        );
+    if(heights.length){
+
+        heights.sort((a,b)=>a-b);
+
+        console.log("Deck detected using triangle surfaces.");
+
+        return heights[Math.floor(heights.length/2)];
     }
 
-    heights.sort((a,b)=>a-b);
+    // Backup method: estimate deck height from central vertices.
 
-    return heights[Math.floor(heights.length/2)];
+    if(vertexHeights.length){
+
+        vertexHeights.sort((a,b)=>a-b);
+
+        console.warn(
+            "Horizontal deck detection failed. Using vertex fallback."
+        );
+
+        return vertexHeights[
+            Math.floor(vertexHeights.length/2)
+        ];
+    }
+
+    // Final fallback: do not stop the entire simulation.
+
+    console.warn(
+        "Deck height could not be measured. Using default height."
+    );
+
+    return 0;
 }
-
+    
 // ========================================
 // POSITION JOINTS
 // ========================================

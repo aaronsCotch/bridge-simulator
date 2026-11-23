@@ -911,14 +911,13 @@ function findDeckSurfaceY(meshes){
 
 function positionJoint(wrapper,meshes,side){
 
-    // Reset the wrapper before measuring its model.
-
     wrapper.position.set(0,0,0);
-   const JOINT_SCALE = 0.001
-    
+
+    const JOINT_SCALE = 0.001;
+
     wrapper.scaling.set(
-        JOINT_SCALE
-        JOINT_SCALE
+        JOINT_SCALE,
+        JOINT_SCALE,
         JOINT_SCALE
     );
 
@@ -927,44 +926,22 @@ function positionJoint(wrapper,meshes,side){
     const bounds =
     calculateBridgeSpaceBounds(meshes);
 
-    /*
-       IMPORTANT:
-
-       The bridge roots already create the gap.
-       Therefore, the joints must NOT receive
-       another BASE_CLOSING_OFFSET here.
-    */
-
     if(side==="left"){
-
         wrapper.position.x = -bounds.maxX;
-
     }else{
-
         wrapper.position.x = -bounds.minX;
     }
 
-    // Align the top of the joint with the bridge deck.
-
     wrapper.position.y =
     bridgeDeckLocalY-bounds.maxY;
-
-    // Center the joint across the bridge.
 
     wrapper.position.z =
     -bounds.centerZ;
 
     wrapper.computeWorldMatrix(true);
 
-    console.log(
-        side+" joint bounds:",
-        bounds
-    );
-
-    console.log(
-        side+" joint final position:",
-        wrapper.position
-    );
+    console.log(side+" joint bounds:",bounds);
+    console.log(side+" joint final position:",wrapper.position);
 }
 
 // ========================================

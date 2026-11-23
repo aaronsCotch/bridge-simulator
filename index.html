@@ -914,7 +914,13 @@ function positionJoint(wrapper,meshes,side){
     // Reset the wrapper before measuring its model.
 
     wrapper.position.set(0,0,0);
-    wrapper.scaling.set(1,1,1);
+   const JOINT_SCALE = 0.01
+    
+    wrapper.scaling.set(
+        JOINT_SCALE
+        JOINT_SCALE
+        JOINT_SCALE
+    );
 
     wrapper.computeWorldMatrix(true);
 

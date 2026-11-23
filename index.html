@@ -105,6 +105,10 @@ Visual movement is amplified for demonstration.
 
 "use strict";
 
+// ========================================
+// SETTINGS
+// ========================================
+
 const BASE_URL =
 "https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
 
@@ -116,12 +120,22 @@ const BRIDGE_LENGTH = 50;
 const MODEL_WIDTH = 80;
 const VISUAL_AMPLIFICATION = 30;
 
+
+// ========================================
+// HTML ELEMENTS
+// ========================================
+
 const canvas = document.getElementById("renderCanvas");
 const status = document.getElementById("status");
 
 const temperatureSlider = document.getElementById("temperature");
 const mechanicalSlider = document.getElementById("mechanical");
 const materialSelect = document.getElementById("material");
+
+
+// ========================================
+// BABYLON SCENE
+// ========================================
 
 const engine = new BABYLON.Engine(canvas,true);
 const scene = new BABYLON.Scene(engine);
@@ -173,7 +187,10 @@ ground.material = groundMat;
 // BRIDGE GROUPS
 // ========================================
 
-const bridgeRoot = new BABYLON.TransformNode("bridgeRoot",scene);
+const bridgeRoot = new BABYLON.TransformNode(
+"bridgeRoot",
+scene
+);
 
 const leftBridgeRoot = new BABYLON.TransformNode(
 "leftBridgeRoot",
@@ -188,7 +205,10 @@ scene
 leftBridgeRoot.parent = bridgeRoot;
 rightBridgeRoot.parent = bridgeRoot;
 
-const jointRoot = new BABYLON.TransformNode("jointRoot",scene);
+const jointRoot = new BABYLON.TransformNode(
+"jointRoot",
+scene
+);
 
 let modelScale = 1;
 let modelsReady = false;
@@ -216,6 +236,7 @@ function reparentPreservingWorld(mesh,parent){
     mesh.rotationQuaternion = rotation;
 }
 
+
 function visibleMeshes(result){
 
     return result.meshes.filter(mesh =>
@@ -224,6 +245,7 @@ function visibleMeshes(result){
         mesh.getTotalVertices() > 0
     );
 }
+
 
 function calculateBounds(meshes){
 
@@ -259,6 +281,7 @@ function calculateBounds(meshes){
     };
 }
 
+
 async function importCombinedModel(filename,parent){
 
     const result = await BABYLON.SceneLoader.ImportMeshAsync(
@@ -271,7 +294,7 @@ async function importCombinedModel(filename,parent){
     const meshes = visibleMeshes(result);
 
     if(!meshes.length){
-        throw new Error(filename+" did not contain a visible 3D mesh.");
+        throw new Error(filename+" has no visible 3D mesh.");
     }
 
     for(const mesh of meshes){
@@ -283,7 +306,202 @@ async function importCombinedModel(filename,parent){
 
 
 // ========================================
-// LOAD AND SEPARATE BRIDGE HALVES
+// SPLIT BRIDGE GEOMETRY
+// ========================================
+
+function splitBridgeGeometry(meshes){
+
+    const inverseRoot = bridgeRoot
+        .getWorldMatrix()
+        .clone();
+
+    inverseRoot.invert();
+
+    let leftTriangles = 0;
+    let rightTriangles = 0;
+
+    for(const source of meshes){
+
+        const sourcePositions = source.getVerticesData(
+            BABYLON.VertexBuffer.PositionKind
+        );
+
+        const sourceIndices = source.getIndices();
+
+        const sourceUVs = source.getVerticesData(
+            BABYLON.VertexBuffer.UVKind
+        );
+
+        if(!sourcePositions || !sourceIndices){
+            continue;
+        }
+
+        source.computeWorldMatrix(true);
+
+        const worldMatrix = source.getWorldMatrix();
+
+        const transformed = [];
+
+        // Convert every vertex into bridgeRoot coordinates.
+
+        for(let i=0;i<sourcePositions.length;i+=3){
+
+            const local = new BABYLON.Vector3(
+                sourcePositions[i],
+                sourcePositions[i+1],
+                sourcePositions[i+2]
+            );
+
+            const world = BABYLON.Vector3.TransformCoordinates(
+                local,
+                worldMatrix
+            );
+
+            const rootPosition = BABYLON.Vector3.TransformCoordinates(
+                world,
+                inverseRoot
+            );
+
+            transformed.push(
+                rootPosition.x,
+                rootPosition.y,
+                rootPosition.z
+            );
+        }
+
+
+        const leftPositions = [];
+        const leftUVs = [];
+
+        const rightPositions = [];
+        const rightUVs = [];
+
+
+        // Assign complete triangles to the left or right half.
+
+        for(let i=0;i<sourceIndices.length;i+=3){
+
+            const a = sourceIndices[i];
+            const b = sourceIndices[i+1];
+            const c = sourceIndices[i+2];
+
+            const centerX = (
+                transformed[a*3] +
+                transformed[b*3] +
+                transformed[c*3]
+            )/3;
+
+            const targetPositions =
+                centerX < 0 ? leftPositions : rightPositions;
+
+            const targetUVs =
+                centerX < 0 ? leftUVs : rightUVs;
+
+            const vertices = [a,b,c];
+
+            for(const index of vertices){
+
+                targetPositions.push(
+                    transformed[index*3],
+                    transformed[index*3+1],
+                    transformed[index*3+2]
+                );
+
+                if(sourceUVs){
+
+                    targetUVs.push(
+                        sourceUVs[index*2],
+                        sourceUVs[index*2+1]
+                    );
+
+                }else{
+
+                    targetUVs.push(0,0);
+
+                }
+            }
+
+            if(centerX < 0){
+                leftTriangles++;
+            }else{
+                rightTriangles++;
+            }
+        }
+
+
+        // Create new left and right geometry.
+
+        createSplitMesh(
+            "leftBridgePart",
+            leftPositions,
+            leftUVs,
+            leftBridgeRoot,
+            source.material
+        );
+
+        createSplitMesh(
+            "rightBridgePart",
+            rightPositions,
+            rightUVs,
+            rightBridgeRoot,
+            source.material
+        );
+
+        source.dispose(false,true);
+    }
+
+
+    if(leftTriangles===0 || rightTriangles===0){
+
+        throw new Error(
+            "The bridge geometry could not be divided into two halves. Check the bridge model's X-axis orientation."
+        );
+    }
+
+    console.log("Left triangles:",leftTriangles);
+    console.log("Right triangles:",rightTriangles);
+}
+
+
+function createSplitMesh(name,positions,uvs,parent,material){
+
+    if(positions.length===0){
+        return;
+    }
+
+    const mesh = new BABYLON.Mesh(name,scene);
+
+    const indices = [];
+
+    for(let i=0;i<positions.length/3;i++){
+        indices.push(i);
+    }
+
+    const normals = [];
+
+    BABYLON.VertexData.ComputeNormals(
+        positions,
+        indices,
+        normals
+    );
+
+    const vertexData = new BABYLON.VertexData();
+
+    vertexData.positions = positions;
+    vertexData.indices = indices;
+    vertexData.normals = normals;
+    vertexData.uvs = uvs;
+
+    vertexData.applyToMesh(mesh,true);
+
+    mesh.material = material;
+
+    mesh.parent = parent;
+}
+
+
+// ========================================
+// LOAD MODELS
 // ========================================
 
 try{
@@ -300,7 +518,8 @@ try{
     const width = bounds.maxX-bounds.minX;
 
     if(!Number.isFinite(width) || width<=0){
-        throw new Error("The bridge model has invalid dimensions.");
+
+        throw new Error("Invalid bridge dimensions.");
     }
 
     modelScale = MODEL_WIDTH/width;
@@ -319,50 +538,24 @@ try{
 
     bridgeRoot.position.copyFrom(sharedPosition);
 
+    bridgeRoot.computeWorldMatrix(true);
 
-    // Separate meshes according to their X positions.
-    // The X axis is the length of the bridge.
 
-    let leftCount = 0;
-    let rightCount = 0;
+    status.textContent = "Separating bridge halves...";
 
-    for(const mesh of bridgeMeshes){
-
-        mesh.computeWorldMatrix(true);
-
-        const centerX =
-            mesh.getBoundingInfo().boundingBox.centerWorld.x;
-
-        if(centerX < 0){
-
-            mesh.parent = leftBridgeRoot;
-            leftCount++;
-
-        }else{
-
-            mesh.parent = rightBridgeRoot;
-            rightCount++;
-
-        }
-    }
-
-    if(leftCount===0 || rightCount===0){
-
-        throw new Error(
-            "Could not separate the bridge into left and right groups."
-        );
-
-    }
-
-    status.textContent =
-        "Bridge separated. Loading expansion joints...";
+    splitBridgeGeometry(bridgeMeshes);
 
 
     // ========================================
     // LOAD EXPANSION JOINTS
     // ========================================
 
-    await importCombinedModel(JOINT_FILE,jointRoot);
+    status.textContent = "Loading expansion joints...";
+
+    await importCombinedModel(
+        JOINT_FILE,
+        jointRoot
+    );
 
     jointRoot.scaling.set(
         modelScale,
@@ -370,7 +563,13 @@ try{
         modelScale
     );
 
-    jointRoot.position.copyFrom(sharedPosition);
+    jointRoot.position.x = bridgeRoot.position.x;
+    jointRoot.position.y = bridgeRoot.position.y;
+
+    // Preserve the corrected joint position.
+    // Do NOT overwrite this with sharedPosition.
+
+    jointRoot.position.z = -33*modelScale;
 
 
     modelsReady = true;
@@ -383,7 +582,7 @@ try{
     console.error("3D MODEL ERROR:",error);
 
     status.textContent =
-        "MODEL ERROR: "+(error && error.message ? error.message : String(error));
+        "MODEL ERROR: "+error.message;
 }
 
 
@@ -409,42 +608,30 @@ function updateSimulation(){
 
     const deltaLmm = deltaL*1000;
 
-
-    // Total change includes thermal and mechanical adjustment.
-
     const totalGapChangeMm = deltaLmm+mechanical;
 
 
-    // Convert the total gap change into visual movement.
-    // Each bridge half moves by half of the total change.
+    // Calculate movement of each bridge half.
 
     const movementPerSide =
-        (totalGapChangeMm/1000/2) *
-        (MODEL_WIDTH/BRIDGE_LENGTH) *
-        VISUAL_AMPLIFICATION;
+        (totalGapChangeMm/1000/BRIDGE_LENGTH) *
+        MODEL_WIDTH *
+        VISUAL_AMPLIFICATION / 2;
 
 
     if(modelsReady){
 
-        // HEATING:
-        // Left half moves left.
-        // Right half moves right.
-
-        // COOLING:
-        // Left half moves right.
-        // Right half moves left.
+        // Heating: move halves away from each other.
+        // Cooling: move halves toward each other.
 
         leftBridgeRoot.position.x = -movementPerSide;
 
         rightBridgeRoot.position.x = movementPerSide;
-
-        // Keep the expansion joints in their original position.
-        // Do not scale the entire bridge or joint model.
     }
 
 
     // ========================================
-    // UPDATE DISPLAYED VALUES
+    // UPDATE DISPLAY
     // ========================================
 
     document.getElementById("temperatureValue").textContent =
@@ -485,7 +672,7 @@ materialSelect.addEventListener("change",updateSimulation);
 
 
 // ========================================
-// RESET BUTTON
+// RESET
 // ========================================
 
 document.getElementById("resetButton").addEventListener("click",function(){

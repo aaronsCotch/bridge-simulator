@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bridge Model Test</title>
+
+<style>
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #e8edf2;
+}
+#renderCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+}
+#status {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+    background: white;
+    font-family: Arial;
+    z-index: 2;
+}
+</style>
+
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+</head>
+
+<body>
+
+<div id="status">Loading bridge models...</div>
+<canvas id="renderCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("renderCanvas");
+const engine = new BABYLON.Engine(canvas, true);
+
+const createScene = async function () {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.91, 0.94, 0.97, 1);
+
+    const camera = new BABYLON.ArcRotateCamera(
+        "camera",
+        -Math.PI / 2,
+        Math.PI / 2.5,
+        300,
+        BABYLON.Vector3.Zero(),
+        scene
+    );
+
+    camera.attachControl(canvas, true);
+    camera.wheelPrecision = 30;
+
+    const light = new BABYLON.HemisphericLight(
+        "light",
+        new BABYLON.Vector3(0, 1, 0),
+        scene
+    );
+
+    light.intensity = 1.1;
+
+    const ground = BABYLON.MeshBuilder.CreateGround(
+        "ground",
+        {width: 500, height: 300},
+        scene
+    );
+
+    const material = new BABYLON.StandardMaterial("groundMat", scene);
+    material.diffuseColor = new BABYLON.Color3(0.75, 0.78, 0.82);
+    ground.material = material;
+
+    const files = [
+        "Left%20bridge_2.glb",
+        "right%20bridge.glb",
+        "left%20bridge%20joint.glb",
+        "right%20bridge%20joint.glb"
+    ];
+
+    const status = document.getElementById("status");
+
+    try {
+        for (const file of files) {
+            status.innerText = "Loading " + decodeURIComponent(file);
+
+            const result = await BABYLON.SceneLoader.ImportMeshAsync(
+                "",
+                "./",
+                file,
+                scene
+            );
+
+            console.log("Loaded:", file, result.meshes);
+
+            const root = new BABYLON.TransformNode(
+                "group_" + file,
+                scene
+            );
+
+            result.meshes.forEach(mesh => {
+                if (mesh !== scene.meshes[0] && mesh.parent === null) {
+                    mesh.parent = root;
+                }
+            });
+        }
+
+        status.innerText =
+            "All models loaded! Drag to rotate, scroll to zoom.";
+
+    } catch (error) {
+        console.error(error);
+        status.innerText = "Loading error: " + error.message;
+    }
+
+    return scene;
+};
+
+createScene().then(scene => {
+    engine.runRenderLoop(() => scene.render());
+});
+
+window.addEventListener("resize", () => engine.resize());
+</script>
+
+</body>
+</html

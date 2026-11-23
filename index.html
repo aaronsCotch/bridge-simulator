@@ -584,23 +584,50 @@ try {
         -bridgeBounds.minY * modelScale;
 
 
-    // ====================================
-    // LOAD JOINT MODEL
-    // ====================================
+  // ====================================
+// LOAD SEPARATE EXPANSION JOINTS
+// ====================================
 
-    status.textContent = "Loading expansion joints...";
+status.textContent = "Loading left expansion joint...";
 
-    await loadSplitModel(
-        JOINT_FILE,
-        jointRoot,
-        leftJoint,
-        rightJoint,
-        modelScale
+async function loadSingleJoint(filename, group) {
+
+    const result = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        filename,
+        scene
     );
 
-    status.textContent = "Both 3D models loaded successfully.";
+    const meshes = result.meshes.filter(mesh =>
+        mesh.getTotalVertices() > 0
+    );
 
-    camera.target.set(0, 12, 0);
+    if (meshes.length === 0) {
+        throw new Error("No mesh found in " + filename);
+    }
+
+    for (const mesh of meshes) {
+        moveMeshPreservingWorld(mesh, group);
+    }
+}
+
+// Load the two separate joint models.
+
+await loadSingleJoint("left joint.glb", leftJoint);
+
+status.textContent = "Loading right expansion joint...";
+
+await loadSingleJoint("right joint.glb", rightJoint);
+
+// Use the same position and scale as the bridge.
+
+jointRoot.scaling.copyFrom(bridgeRoot.scaling);
+jointRoot.position.copyFrom(bridgeRoot.position);
+
+status.textContent = "Bridge and expansion joints loaded!";
+
+camera.target.set(0, 12, 0);
 
 } catch(error) {
 

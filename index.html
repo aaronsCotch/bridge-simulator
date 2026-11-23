@@ -198,7 +198,7 @@ const materialSelect = document.getElementById("material");
 window.onerror = function(message,source,line,column,error){
 
     status.textContent =
-        "JAVASCRIPT ERROR: " + message + " (Line " + line + ")";
+        "JAVASCRIPT ERROR: "+message+" (Line "+line+")";
 
     console.error(error);
 
@@ -207,14 +207,11 @@ window.onerror = function(message,source,line,column,error){
 
 window.addEventListener("unhandledrejection",function(event){
 
-    status.textContent =
-        "LOADING ERROR: " + event.reason;
+    status.textContent = "LOADING ERROR: "+event.reason;
 
     console.error(event.reason);
 
 });
-
-status.textContent = "Starting Babylon.js...";
 
 // ========================================
 // SETTINGS
@@ -224,26 +221,30 @@ const BASE_URL =
 "https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
 
 const BRIDGE_FILE = "2bridges.glb";
-const JOINT_FILE = "2joints.glb";
+
+const LEFT_JOINT_FILE =
+"for%20interlocking%20teeth%20left.glb";
+
+const RIGHT_JOINT_FILE =
+"for%20interlocking%20teeth%20right.glb";
 
 const REFERENCE_TEMP = 20;
 const BRIDGE_LENGTH = 50;
 const MODEL_WIDTH = 80;
 const VISUAL_AMPLIFICATION = 30;
 
-// Small inward adjustment to bring the bridge halves closer.
-// This is measured in the bridge model's local units.
 const BASE_CLOSING_OFFSET = 0.35;
 
 // ========================================
-// BABYLON SCENE
+// BABYLON ENGINE
 // ========================================
 
 const engine = new BABYLON.Engine(canvas,true);
 
 const scene = new BABYLON.Scene(engine);
 
-scene.clearColor = new BABYLON.Color4(0.06,0.10,0.16,1);
+scene.clearColor =
+new BABYLON.Color4(0.06,0.10,0.16,1);
 
 const camera = new BABYLON.ArcRotateCamera(
     "camera",
@@ -255,6 +256,7 @@ const camera = new BABYLON.ArcRotateCamera(
 );
 
 camera.attachControl(canvas,true);
+
 camera.lowerRadiusLimit = 25;
 camera.upperRadiusLimit = 180;
 
@@ -275,6 +277,10 @@ const directional = new BABYLON.DirectionalLight(
 directional.position.set(30,80,-30);
 directional.intensity = 0.8;
 
+// ========================================
+// GROUND
+// ========================================
+
 const ground = BABYLON.MeshBuilder.CreateGround(
     "ground",
     {width:160,height:100},
@@ -287,12 +293,12 @@ const groundMat = new BABYLON.StandardMaterial(
 );
 
 groundMat.diffuseColor =
-    new BABYLON.Color3(0.16,0.25,0.23);
+new BABYLON.Color3(0.16,0.25,0.23);
 
 ground.material = groundMat;
 
 // ========================================
-// BRIDGE GROUPS
+// BRIDGE ROOTS
 // ========================================
 
 const bridgeRoot = new BABYLON.TransformNode(
@@ -313,84 +319,64 @@ const rightBridgeRoot = new BABYLON.TransformNode(
 leftBridgeRoot.parent = bridgeRoot;
 rightBridgeRoot.parent = bridgeRoot;
 
-const jointRoot = new BABYLON.TransformNode(
-    "jointRoot",
+// ========================================
+// JOINT ROOTS
+// ========================================
+
+const leftJointRoot = new BABYLON.TransformNode(
+    "leftJointRoot",
     scene
 );
+
+const rightJointRoot = new BABYLON.TransformNode(
+    "rightJointRoot",
+    scene
+);
+
+// Each joint follows its corresponding bridge half.
+
+leftJointRoot.parent = leftBridgeRoot;
+rightJointRoot.parent = rightBridgeRoot;
 
 let modelScale = 1;
 let modelsReady = false;
 
+let bridgeBounds = null;
+
 // ========================================
-// MODEL FUNCTIONS
+// BOUNDING BOX FUNCTION
 // ========================================
-
-function reparentPreservingWorld(mesh,parent){
-
-    mesh.computeWorldMatrix(true);
-
-    const world = mesh.getWorldMatrix().clone();
-
-    const scaling = BABYLON.Vector3.Zero();
-    const rotation = BABYLON.Quaternion.Identity();
-    const position = BABYLON.Vector3.Zero();
-
-    world.decompose(scaling,rotation,position);
-
-    mesh.parent = parent;
-
-    mesh.position.copyFrom(position);
-    mesh.scaling.copyFrom(scaling);
-
-    mesh.rotationQuaternion = rotation;
-}
-
-
-function visibleMeshes(result){
-
-    return result.meshes.filter(mesh =>
-        mesh &&
-        mesh.getTotalVertices &&
-        mesh.getTotalVertices() > 0
-    );
-}
-
 
 function calculateBounds(meshes){
 
-    let minX = Infinity;
-    let maxX = -Infinity;
-
-    let minY = Infinity;
-    let maxY = -Infinity;
-
-    let minZ = Infinity;
-    let maxZ = -Infinity;
+    let minX=Infinity,maxX=-Infinity;
+    let minY=Infinity,maxY=-Infinity;
+    let minZ=Infinity,maxZ=-Infinity;
 
     for(const mesh of meshes){
 
+        if(!mesh || mesh.isDisposed()) continue;
+
         mesh.computeWorldMatrix(true);
 
-        const box = mesh.getBoundingInfo().boundingBox;
+        const box =
+        mesh.getBoundingInfo().boundingBox;
 
-        minX = Math.min(minX,box.minimumWorld.x);
-        maxX = Math.max(maxX,box.maximumWorld.x);
+        minX=Math.min(minX,box.minimumWorld.x);
+        maxX=Math.max(maxX,box.maximumWorld.x);
 
-        minY = Math.min(minY,box.minimumWorld.y);
-        maxY = Math.max(maxY,box.maximumWorld.y);
+        minY=Math.min(minY,box.minimumWorld.y);
+        maxY=Math.max(maxY,box.maximumWorld.y);
 
-        minZ = Math.min(minZ,box.minimumWorld.z);
-        maxZ = Math.max(maxZ,box.maximumWorld.z);
+        minZ=Math.min(minZ,box.minimumWorld.z);
+        maxZ=Math.max(maxZ,box.maximumWorld.z);
     }
 
     return {
 
-        minX,
-        maxX,
-        minY,
-        maxY,
-        minZ,
-        maxZ,
+        minX,maxX,
+        minY,maxY,
+        minZ,maxZ,
 
         centerX:(minX+maxX)/2,
         centerY:(minY+maxY)/2,
@@ -399,79 +385,41 @@ function calculateBounds(meshes){
     };
 }
 
+// ========================================
+// IMPORT MODEL
+// ========================================
 
-async function importCombinedModel(filename,parent){
+async function importModel(filename,parent){
 
-    const result = await BABYLON.SceneLoader.ImportMeshAsync(
+    const result =
+    await BABYLON.SceneLoader.ImportMeshAsync(
         null,
         BASE_URL,
         filename,
         scene
     );
 
-    const meshes = visibleMeshes(result);
+    const meshes = result.meshes.filter(mesh=>
+        mesh &&
+        mesh.getTotalVertices &&
+        mesh.getTotalVertices()>0
+    );
 
-    if(!meshes.length){
+    if(meshes.length===0){
 
         throw new Error(
-            filename+" has no visible 3D mesh."
+            "No visible meshes found in "+filename
         );
+
     }
 
     for(const mesh of meshes){
 
-        reparentPreservingWorld(mesh,parent);
+        mesh.parent = parent;
 
     }
 
     return meshes;
-}
-
-// ========================================
-// CREATE SPLIT MESH
-// ========================================
-
-function createSplitMesh(
-    name,
-    positions,
-    uvs,
-    parent,
-    material
-){
-
-    if(positions.length===0){
-        return;
-    }
-
-    const mesh = new BABYLON.Mesh(name,scene);
-
-    const indices = [];
-
-    for(let i=0;i<positions.length/3;i++){
-        indices.push(i);
-    }
-
-    const normals = [];
-
-    BABYLON.VertexData.ComputeNormals(
-        positions,
-        indices,
-        normals
-    );
-
-    const vertexData = new BABYLON.VertexData();
-
-    vertexData.positions = positions;
-    vertexData.indices = indices;
-    vertexData.normals = normals;
-    vertexData.uvs = uvs;
-
-    vertexData.applyToMesh(mesh,true);
-
-    mesh.material = material;
-    mesh.parent = parent;
-
-    return mesh;
 }
 
 // ========================================
@@ -480,55 +428,55 @@ function createSplitMesh(
 
 function splitBridgeGeometry(meshes){
 
-    const inverseRoot = bridgeRoot
-        .getWorldMatrix()
-        .clone();
+    const inverseRoot =
+    bridgeRoot.getWorldMatrix().clone();
 
     inverseRoot.invert();
 
-    let leftTriangles = 0;
-    let rightTriangles = 0;
+    let leftTriangles=0;
+    let rightTriangles=0;
 
     for(const source of meshes){
 
-        const sourcePositions = source.getVerticesData(
+        const positions =
+        source.getVerticesData(
             BABYLON.VertexBuffer.PositionKind
         );
 
-        const sourceIndices = source.getIndices();
+        const indices = source.getIndices();
 
-        const sourceUVs = source.getVerticesData(
+        const uvs =
+        source.getVerticesData(
             BABYLON.VertexBuffer.UVKind
         );
 
-        if(!sourcePositions || !sourceIndices){
-            continue;
-        }
+        if(!positions || !indices) continue;
 
         source.computeWorldMatrix(true);
 
         const worldMatrix = source.getWorldMatrix();
 
-        const transformed = [];
+        const transformed=[];
 
-        for(let i=0;i<sourcePositions.length;i+=3){
+        for(let i=0;i<positions.length;i+=3){
 
             const local = new BABYLON.Vector3(
-                sourcePositions[i],
-                sourcePositions[i+1],
-                sourcePositions[i+2]
+                positions[i],
+                positions[i+1],
+                positions[i+2]
             );
 
-            const world = BABYLON.Vector3.TransformCoordinates(
+            const world =
+            BABYLON.Vector3.TransformCoordinates(
                 local,
                 worldMatrix
             );
 
             const rootPosition =
-                BABYLON.Vector3.TransformCoordinates(
-                    world,
-                    inverseRoot
-                );
+            BABYLON.Vector3.TransformCoordinates(
+                world,
+                inverseRoot
+            );
 
             transformed.push(
                 rootPosition.x,
@@ -537,29 +485,29 @@ function splitBridgeGeometry(meshes){
             );
         }
 
-        const leftPositions = [];
-        const leftUVs = [];
+        const leftPositions=[];
+        const leftUVs=[];
 
-        const rightPositions = [];
-        const rightUVs = [];
+        const rightPositions=[];
+        const rightUVs=[];
 
-        for(let i=0;i<sourceIndices.length;i+=3){
+        for(let i=0;i<indices.length;i+=3){
 
-            const a = sourceIndices[i];
-            const b = sourceIndices[i+1];
-            const c = sourceIndices[i+2];
+            const a=indices[i];
+            const b=indices[i+1];
+            const c=indices[i+2];
 
-            const centerX = (
-                transformed[a*3] +
-                transformed[b*3] +
+            const centerX=(
+                transformed[a*3]+
+                transformed[b*3]+
                 transformed[c*3]
             )/3;
 
             const targetPositions =
-                centerX < 0 ? leftPositions : rightPositions;
+            centerX<0 ? leftPositions:rightPositions;
 
             const targetUVs =
-                centerX < 0 ? leftUVs : rightUVs;
+            centerX<0 ? leftUVs:rightUVs;
 
             for(const index of [a,b,c]){
 
@@ -569,11 +517,11 @@ function splitBridgeGeometry(meshes){
                     transformed[index*3+2]
                 );
 
-                if(sourceUVs){
+                if(uvs){
 
                     targetUVs.push(
-                        sourceUVs[index*2],
-                        sourceUVs[index*2+1]
+                        uvs[index*2],
+                        uvs[index*2+1]
                     );
 
                 }else{
@@ -581,29 +529,63 @@ function splitBridgeGeometry(meshes){
                     targetUVs.push(0,0);
 
                 }
+
             }
 
-            if(centerX < 0){
+            if(centerX<0){
                 leftTriangles++;
             }else{
                 rightTriangles++;
             }
         }
 
-        createSplitMesh(
+        function createMesh(name,verts,uv,parent){
+
+            if(verts.length===0)return;
+
+            const mesh = new BABYLON.Mesh(name,scene);
+
+            const meshIndices=[];
+
+            for(let i=0;i<verts.length/3;i++){
+                meshIndices.push(i);
+            }
+
+            const normals=[];
+
+            BABYLON.VertexData.ComputeNormals(
+                verts,
+                meshIndices,
+                normals
+            );
+
+            const data = new BABYLON.VertexData();
+
+            data.positions=verts;
+            data.indices=meshIndices;
+            data.normals=normals;
+            data.uvs=uv;
+
+            data.applyToMesh(mesh,true);
+
+            mesh.material=source.material;
+
+            mesh.parent=parent;
+
+        }
+
+        createMesh(
             "leftBridgePart",
             leftPositions,
             leftUVs,
-            leftBridgeRoot,
-            source.material
+            leftBridgeRoot
         );
 
-        createSplitMesh(
+        createMesh(
             "rightBridgePart",
             rightPositions,
             rightUVs,
-            rightBridgeRoot,
-            source.material
+            rightBridgeRoot
         );
 
         source.dispose(false,false);
@@ -612,194 +594,30 @@ function splitBridgeGeometry(meshes){
     if(leftTriangles===0 || rightTriangles===0){
 
         throw new Error(
-            "The bridge geometry could not be divided into two halves. Check the bridge model's X-axis orientation."
+            "Bridge could not be separated into two halves."
         );
+
     }
 
-    console.log("Left bridge triangles:",leftTriangles);
-    console.log("Right bridge triangles:",rightTriangles);
+    console.log("Bridge separated successfully.");
+
 }
 
 // ========================================
-// LARGER ZIPPER-STYLE EXPANSION JOINT TEETH
+// ALIGN ACTUAL JOINT MODELS
 // ========================================
 
-function createZipperTeeth(jointMeshes){
+function alignJoint(meshes,jointRoot,targetX){
 
-    console.log("Creating enlarged interlocking zipper teeth...");
+    const bounds=calculateBounds(meshes);
 
-    const bounds = calculateBounds(jointMeshes);
-
-    bridgeRoot.computeWorldMatrix(true);
-
-    const inverseRoot =
-        bridgeRoot.getWorldMatrix().clone();
-
-    inverseRoot.invert();
-
-    const worldCenter = new BABYLON.Vector3(
+    const center = new BABYLON.Vector3(
         bounds.centerX,
         bounds.centerY,
         bounds.centerZ
     );
 
-    const center = BABYLON.Vector3.TransformCoordinates(
-        worldCenter,
-        inverseRoot
-    );
-
-    const jointWidth =
-        (bounds.maxZ-bounds.minZ)/modelScale;
-
-    const jointHeight =
-        (bounds.maxY-bounds.minY)/modelScale;
-
-    if(jointWidth<=0 || !Number.isFinite(jointWidth)){
-
-        throw new Error("Invalid expansion joint width.");
-
-    }
-
-    // Number of alternating teeth
-    const toothCount = 10;
-
-    const pitch = jointWidth/toothCount;
-
-    // ENLARGED TOOTH DIMENSIONS
-
-    const toothLength = 3.5;
-
-    const toothDepth = pitch*0.90;
-
-    const toothHeight = Math.max(
-        0.4,
-        jointHeight*0.65
-    );
-
-    const originalMaterial =
-        jointMeshes.find(mesh=>mesh.material)?.material;
-
-    let toothMaterial = originalMaterial;
-
-    if(!toothMaterial){
-
-        toothMaterial = new BABYLON.StandardMaterial(
-            "zipperToothMaterial",
-            scene
-        );
-
-        toothMaterial.diffuseColor =
-            new BABYLON.Color3(0.65,0.68,0.72);
-    }
-
-    for(let i=0;i<toothCount;i++){
-
-        const isLeft = i%2===0;
-
-        const tooth = BABYLON.MeshBuilder.CreateBox(
-            "zipperTooth_"+i,
-            {
-                width:toothLength,
-                height:toothHeight,
-                depth:toothDepth
-            },
-            scene
-        );
-
-        // Attach each tooth to its own bridge half.
-        // This makes the teeth move together with the bridge.
-
-        tooth.parent = isLeft
-            ? leftBridgeRoot
-            : rightBridgeRoot;
-
-        // Move the teeth toward the center gap.
-        // Their larger length allows them to overlap
-        // farther into the opposite side of the joint.
-
-        tooth.position.x = center.x + (
-            isLeft
-                ? toothLength*0.25
-                : -toothLength*0.25
-        );
-
-        tooth.position.y = center.y;
-
-        tooth.position.z =
-            center.z-jointWidth/2+
-            (i+0.5)*pitch;
-
-        tooth.material = toothMaterial;
-
-        tooth.isPickable = false;
-    }
-
-    console.log(
-        "Enlarged interlocking teeth created:",
-        toothCount
-    );
-
-}
-
-// ========================================
-// LOAD MODELS
-// ========================================
-
-try{
-
-    // LOAD BRIDGE
-
-    status.textContent = "Loading bridge model...";
-
-    const bridgeMeshes = await importCombinedModel(
-        BRIDGE_FILE,
-        bridgeRoot
-    );
-
-    const bounds = calculateBounds(bridgeMeshes);
-
-    const width = bounds.maxX-bounds.minX;
-
-    if(!Number.isFinite(width) || width<=0){
-
-        throw new Error("Invalid bridge dimensions.");
-
-    }
-
-    modelScale = MODEL_WIDTH/width;
-
-    const sharedPosition = new BABYLON.Vector3(
-        -bounds.centerX*modelScale,
-        -bounds.minY*modelScale,
-        -bounds.centerZ*modelScale
-    );
-
-    bridgeRoot.scaling.set(
-        modelScale,
-        modelScale,
-        modelScale
-    );
-
-    bridgeRoot.position.copyFrom(sharedPosition);
-
-    bridgeRoot.computeWorldMatrix(true);
-
-    // SEPARATE BRIDGE HALVES
-
-    status.textContent = "Separating bridge halves...";
-
-    splitBridgeGeometry(bridgeMeshes);
-
-    // LOAD EXPANSION JOINTS
-
-    status.textContent = "Loading expansion joints...";
-
-    const jointMeshes = await importCombinedModel(
-        JOINT_FILE,
-        jointRoot
-    );
-
-    const jointBounds = calculateBounds(jointMeshes);
+    // Match the joint model scale to the bridge.
 
     jointRoot.scaling.set(
         modelScale,
@@ -807,127 +625,229 @@ try{
         modelScale
     );
 
-    jointRoot.position.x = bridgeRoot.position.x;
+    // Position the model at the expansion gap.
 
-    jointRoot.position.y = bridgeRoot.position.y;
-
-    const depthCorrection =
-        (bounds.centerZ-jointBounds.centerZ)*modelScale;
-
-    jointRoot.position.z =
-        bridgeRoot.position.z+depthCorrection;
+    jointRoot.position.set(
+        targetX-center.x*modelScale,
+        bridgeBounds.centerY-center.y*modelScale,
+        bridgeBounds.centerZ-center.z*modelScale
+    );
 
     jointRoot.computeWorldMatrix(true);
 
-    // CREATE ENLARGED REPLACEMENT TEETH
+    console.log(
+        "Joint aligned:",
+        jointRoot.name,
+        jointRoot.position
+    );
 
-    status.textContent = "Creating enlarged expansion joints...";
+}
 
-    createZipperTeeth(jointMeshes);
+// ========================================
+// LOAD EVERYTHING
+// ========================================
 
-    // HIDE ORIGINAL JOINT MODEL.
-    // Do not dispose it because its material
-    // may be shared with the replacement teeth.
+try{
 
-    for(const mesh of jointMeshes){
+    status.textContent="Loading bridge model...";
 
-        if(mesh && !mesh.isDisposed()){
+    // LOAD BRIDGE
 
-            mesh.setEnabled(false);
+    const bridgeMeshes=await importModel(
+        BRIDGE_FILE,
+        bridgeRoot
+    );
 
-        }
+    const originalBounds =
+    calculateBounds(bridgeMeshes);
+
+    const width =
+    originalBounds.maxX-originalBounds.minX;
+
+    if(width<=0 || !Number.isFinite(width)){
+
+        throw new Error("Invalid bridge dimensions.");
+
     }
 
-    jointRoot.setEnabled(false);
+    modelScale=MODEL_WIDTH/width;
 
-    // SIMULATION READY
+    bridgeRoot.scaling.set(
+        modelScale,
+        modelScale,
+        modelScale
+    );
 
-    modelsReady = true;
+    bridgeRoot.position.set(
+        -originalBounds.centerX*modelScale,
+        -originalBounds.minY*modelScale,
+        -originalBounds.centerZ*modelScale
+    );
 
-    status.textContent =
-        "Bridge and expansion joints loaded successfully.";
+    bridgeRoot.computeWorldMatrix(true);
+
+    // SAVE NORMALIZED BRIDGE BOUNDS
+
+    bridgeBounds={
+        minX:(originalBounds.minX-originalBounds.centerX)*modelScale,
+        maxX:(originalBounds.maxX-originalBounds.centerX)*modelScale,
+
+        minY:(originalBounds.minY-originalBounds.minY)*modelScale,
+        maxY:(originalBounds.maxY-originalBounds.minY)*modelScale,
+
+        minZ:(originalBounds.minZ-originalBounds.centerZ)*modelScale,
+        maxZ:(originalBounds.maxZ-originalBounds.centerZ)*modelScale,
+
+        centerX:0,
+
+        centerY:(originalBounds.centerY-originalBounds.minY)*modelScale,
+
+        centerZ:0
+    };
+
+    // SEPARATE BRIDGE HALVES
+
+    status.textContent="Separating bridge halves...";
+
+    splitBridgeGeometry(bridgeMeshes);
+
+    // ====================================
+    // LOAD LEFT INTERLOCKING JOINT
+    // ====================================
+
+    status.textContent="Loading left interlocking joint...";
+
+    const leftJointMeshes=await importModel(
+        LEFT_JOINT_FILE,
+        leftJointRoot
+    );
+
+    // ====================================
+    // LOAD RIGHT INTERLOCKING JOINT
+    // ====================================
+
+    status.textContent="Loading right interlocking joint...";
+
+    const rightJointMeshes=await importModel(
+        RIGHT_JOINT_FILE,
+        rightJointRoot
+    );
+
+    // ====================================
+    // ALIGN BOTH JOINTS
+    // ====================================
+
+    status.textContent="Positioning interlocking joints...";
+
+    // Both models are aligned to the center of the gap.
+    // Their geometry and original materials are preserved.
+
+    alignJoint(
+        leftJointMeshes,
+        leftJointRoot,
+        0
+    );
+
+    alignJoint(
+        rightJointMeshes,
+        rightJointRoot,
+        0
+    );
+
+    // ====================================
+    // READY
+    // ====================================
+
+    modelsReady=true;
+
+    status.textContent=
+    "Bridge and both original interlocking joints loaded successfully.";
 
     console.log("SIMULATION READY");
 
 }catch(error){
 
-    console.error("MODEL LOADING ERROR:",error);
+    console.error("MODEL ERROR:",error);
 
-    modelsReady = false;
+    modelsReady=false;
 
-    status.textContent =
-        "MODEL ERROR: "+error.message;
+    status.textContent=
+    "MODEL ERROR: "+error.message;
 
 }
 
 // ========================================
-// SIMULATION CONTROLS
+// SIMULATION CALCULATIONS
 // ========================================
 
 function updateSimulation(){
 
     const temperature =
-        Number(temperatureSlider.value);
+    Number(temperatureSlider.value);
 
     const mechanical =
-        Number(mechanicalSlider.value);
+    Number(mechanicalSlider.value);
 
     const alpha =
-        Number(materialSelect.value);
+    Number(materialSelect.value);
 
     const deltaT =
-        temperature-REFERENCE_TEMP;
+    temperature-REFERENCE_TEMP;
 
     const deltaL =
-        alpha*BRIDGE_LENGTH*deltaT;
+    alpha*BRIDGE_LENGTH*deltaT;
 
     const deltaLmm =
-        deltaL*1000;
+    deltaL*1000;
 
     const totalGapChangeMm =
-        deltaLmm+mechanical;
+    deltaLmm+mechanical;
 
     const movementPerSide =
-        (totalGapChangeMm/1000/BRIDGE_LENGTH) *
-        MODEL_WIDTH *
-        VISUAL_AMPLIFICATION / 2;
+    (totalGapChangeMm/1000/BRIDGE_LENGTH)*
+    MODEL_WIDTH*
+    VISUAL_AMPLIFICATION/2;
 
     if(modelsReady){
 
-        // Keep the bridge halves slightly closer together
-        // while preserving their movement from the sliders.
+        // Preserve the existing bridge movement.
 
         leftBridgeRoot.position.x =
-            BASE_CLOSING_OFFSET-movementPerSide;
+        BASE_CLOSING_OFFSET-movementPerSide;
 
         rightBridgeRoot.position.x =
-            -BASE_CLOSING_OFFSET+movementPerSide;
+        -BASE_CLOSING_OFFSET+movementPerSide;
+
+        // Both actual joint models are children of
+        // their respective bridge halves.
+        // Therefore, they follow the bridge automatically.
 
     }
 
-    document.getElementById("temperatureValue").textContent =
-        temperature+" °C";
+    document.getElementById("temperatureValue").textContent=
+    temperature+" °C";
 
-    document.getElementById("mechanicalValue").textContent =
-        mechanical+" mm";
+    document.getElementById("mechanicalValue").textContent=
+    mechanical+" mm";
 
-    document.getElementById("expansion").textContent =
-        deltaLmm.toFixed(3)+" mm";
+    document.getElementById("expansion").textContent=
+    deltaLmm.toFixed(3)+" mm";
 
-    document.getElementById("temperatureChange").textContent =
-        (deltaT>0?"+":"")+deltaT+" °C";
+    document.getElementById("temperatureChange").textContent=
+    (deltaT>0?"+":"")+deltaT+" °C";
 
-    document.getElementById("jointMovement").textContent =
-        (deltaLmm/2).toFixed(3)+" mm per side";
+    document.getElementById("jointMovement").textContent=
+    (deltaLmm/2).toFixed(3)+" mm per side";
 
-    document.getElementById("mechanicalResult").textContent =
-        mechanical+" mm";
+    document.getElementById("mechanicalResult").textContent=
+    mechanical+" mm";
 
-    document.getElementById("coefficient").textContent =
-        alpha.toExponential(2)+" /°C";
+    document.getElementById("coefficient").textContent=
+    alpha.toExponential(2)+" /°C";
 
-    document.getElementById("gap").textContent =
-        totalGapChangeMm.toFixed(3)+" mm";
+    document.getElementById("gap").textContent=
+    totalGapChangeMm.toFixed(3)+" mm";
+
 }
 
 // ========================================
@@ -957,11 +877,11 @@ document.getElementById("resetButton").addEventListener(
     "click",
     function(){
 
-        temperatureSlider.value = 20;
+        temperatureSlider.value=20;
 
-        mechanicalSlider.value = 0;
+        mechanicalSlider.value=0;
 
-        materialSelect.value = "0.000012";
+        materialSelect.value="0.000012";
 
         updateSimulation();
 

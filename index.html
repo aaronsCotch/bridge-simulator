@@ -143,39 +143,23 @@ button {
         <h2>Simulation Controls</h2>
 
         <label>Temperature</label>
-
-        <input
-            type="range"
-            id="temperature"
-            min="-20"
-            max="60"
-            value="20"
-        >
+        <input type="range" id="temperature"
+               min="-20" max="60" value="20">
 
         <h3 id="temperatureValue">20 °C</h3>
 
         <label>Mechanical Adjustment</label>
-
-        <input
-            type="range"
-            id="mechanical"
-            min="-100"
-            max="100"
-            value="0"
-        >
+        <input type="range" id="mechanical"
+               min="-100" max="100" value="0">
 
         <h3 id="mechanicalValue">0 mm</h3>
 
         <label>Bridge Material</label>
 
         <select id="material">
-
             <option value="0.000012">Steel</option>
-
             <option value="0.000023">Aluminum</option>
-
             <option value="0.000010">Concrete</option>
-
         </select>
 
         <div class="data">
@@ -204,9 +188,7 @@ button {
 
         </div>
 
-        <button id="resetButton">
-            Reset Simulation
-        </button>
+        <button id="resetButton">Reset Simulation</button>
 
         <p class="small">
             Reference temperature: 20°C<br>
@@ -232,16 +214,19 @@ const BASE_URL =
 "https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
 
 const BRIDGE_FILE = "2bridges.glb";
-const JOINT_FILE = "2joints.glb";
+
+const LEFT_JOINT_FILE = "left joint.glb";
+const RIGHT_JOINT_FILE = "right joint.glb";
 
 const REFERENCE_TEMP = 20;
 const BRIDGE_LENGTH = 50;
-
 const MODEL_WIDTH = 80;
 
 const canvas = document.getElementById("renderCanvas");
-
 const status = document.getElementById("status");
+
+let modelScale = 1;
+let modelsReady = false;
 
 
 // ========================================
@@ -328,33 +313,27 @@ ground.material = groundMat;
 // ========================================
 
 const bridgeRoot = new BABYLON.TransformNode(
-    "bridgeRoot",
-    scene
+    "bridgeRoot", scene
 );
 
 const jointRoot = new BABYLON.TransformNode(
-    "jointRoot",
-    scene
+    "jointRoot", scene
 );
 
 const leftBridge = new BABYLON.TransformNode(
-    "leftBridge",
-    scene
+    "leftBridge", scene
 );
 
 const rightBridge = new BABYLON.TransformNode(
-    "rightBridge",
-    scene
+    "rightBridge", scene
 );
 
 const leftJoint = new BABYLON.TransformNode(
-    "leftJoint",
-    scene
+    "leftJoint", scene
 );
 
 const rightJoint = new BABYLON.TransformNode(
-    "rightJoint",
-    scene
+    "rightJoint", scene
 );
 
 leftBridge.parent = bridgeRoot;
@@ -365,45 +344,8 @@ rightJoint.parent = jointRoot;
 
 
 // ========================================
-// IMPORT AND SPLIT MODEL
+// PRESERVE MESH POSITION
 // ========================================
-
-function getMeshBounds(meshes) {
-
-    let minX = Infinity;
-    let maxX = -Infinity;
-
-    let minY = Infinity;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
-
-    for (const mesh of meshes) {
-
-        mesh.computeWorldMatrix(true);
-
-        const box = mesh.getBoundingInfo().boundingBox;
-
-        minX = Math.min(minX, box.minimumWorld.x);
-        maxX = Math.max(maxX, box.maximumWorld.x);
-
-        minY = Math.min(minY, box.minimumWorld.y);
-        minZ = Math.min(minZ, box.minimumWorld.z);
-        maxZ = Math.max(maxZ, box.maximumWorld.z);
-
-    }
-
-    return {
-        minX,
-        maxX,
-        minY,
-        minZ,
-        maxZ,
-        centerX: (minX + maxX) / 2,
-        centerZ: (minZ + maxZ) / 2
-    };
-
-}
-
 
 function moveMeshPreservingWorld(mesh, parent) {
 
@@ -423,16 +365,62 @@ function moveMeshPreservingWorld(mesh, parent) {
     mesh.scaling.copyFrom(scaling);
 
     mesh.rotationQuaternion = rotation;
-
 }
 
 
-async function loadSplitModel(filename, root, leftGroup, rightGroup, scale) {
+// ========================================
+// GET MODEL BOUNDS
+// ========================================
+
+function getMeshBounds(meshes) {
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+
+    let minY = Infinity;
+    let minZ = Infinity;
+
+    let maxZ = -Infinity;
+
+    for (const mesh of meshes) {
+
+        mesh.computeWorldMatrix(true);
+
+        const box = mesh.getBoundingInfo().boundingBox;
+
+        minX = Math.min(minX, box.minimumWorld.x);
+        maxX = Math.max(maxX, box.maximumWorld.x);
+
+        minY = Math.min(minY, box.minimumWorld.y);
+
+        minZ = Math.min(minZ, box.minimumWorld.z);
+        maxZ = Math.max(maxZ, box.maximumWorld.z);
+    }
+
+    return {
+        minX,
+        maxX,
+        minY,
+        minZ,
+        maxZ,
+        centerX: (minX + maxX) / 2,
+        centerZ: (minZ + maxZ) / 2
+    };
+}
+
+
+// ========================================
+// LOAD BRIDGE MODEL
+// ========================================
+
+async function loadBridge() {
+
+    status.textContent = "Loading bridge model...";
 
     const result = await BABYLON.SceneLoader.ImportMeshAsync(
         null,
         BASE_URL,
-        filename,
+        BRIDGE_FILE,
         scene
     );
 
@@ -441,12 +429,9 @@ async function loadSplitModel(filename, root, leftGroup, rightGroup, scale) {
     );
 
     if (meshes.length < 2) {
-
         throw new Error(
-            filename + " needs at least two separate mesh parts " +
-            "to animate its left and right sections."
+            "The bridge model needs separate left and right parts."
         );
-
     }
 
     const bounds = getMeshBounds(meshes);
@@ -454,13 +439,10 @@ async function loadSplitModel(filename, root, leftGroup, rightGroup, scale) {
     const width = bounds.maxX - bounds.minX;
 
     if (width <= 0) {
-        throw new Error("Invalid model width: " + filename);
+        throw new Error("Invalid bridge width.");
     }
 
-    const centerX = bounds.centerX;
-    const centerZ = bounds.centerZ;
-
-    const midpoint = centerX;
+    modelScale = MODEL_WIDTH / width;
 
     let leftCount = 0;
     let rightCount = 0;
@@ -469,99 +451,21 @@ async function loadSplitModel(filename, root, leftGroup, rightGroup, scale) {
 
         const box = mesh.getBoundingInfo().boundingBox;
 
-        const meshCenter =
-            (box.minimumWorld.x + box.maximumWorld.x) / 2;
-
-        const destination =
-            meshCenter < midpoint ? leftGroup : rightGroup;
-
-        if (destination === leftGroup) leftCount++;
-        else rightCount++;
-
-        moveMeshPreservingWorld(mesh, destination);
-
-    }
-
-    if (!leftCount || !rightCount) {
-
-        throw new Error(
-            "Could not separate the left and right parts of " + filename
-        );
-
-    }
-
-    root.scaling.set(scale, scale, scale);
-
-    root.position.x = -centerX * scale;
-    root.position.z = -centerZ * scale;
-    root.position.y = -bounds.minY * scale;
-
-    return {
-        width,
-        leftCount,
-        rightCount
-    };
-
-}
-
-
-// ========================================
-// LOAD BOTH MODELS
-// ========================================
-
-let modelScale = 1;
-
-try {
-
-    status.textContent = "Loading bridge model...";
-
-    // Load bridge first to calculate common scale.
-
-    const bridgeResult = await BABYLON.SceneLoader.ImportMeshAsync(
-        null,
-        BASE_URL,
-        BRIDGE_FILE,
-        scene
-    );
-
-    const bridgeMeshes = bridgeResult.meshes.filter(mesh =>
-        mesh.getTotalVertices() > 0
-    );
-
-    if (bridgeMeshes.length < 2) {
-        throw new Error(
-            "The bridge model does not contain separate left and right mesh parts."
-        );
-    }
-
-    const bridgeBounds = getMeshBounds(bridgeMeshes);
-
-    const bridgeWidth = bridgeBounds.maxX - bridgeBounds.minX;
-
-    modelScale = MODEL_WIDTH / bridgeWidth;
-
-    // Split bridge meshes.
-
-    let leftCount = 0;
-    let rightCount = 0;
-
-    for (const mesh of bridgeMeshes) {
-
-        const box = mesh.getBoundingInfo().boundingBox;
-
         const center =
             (box.minimumWorld.x + box.maximumWorld.x) / 2;
 
         const destination =
-            center < bridgeBounds.centerX
+            center < bounds.centerX
             ? leftBridge
             : rightBridge;
 
-        if (destination === leftBridge) leftCount++;
-        else rightCount++;
+        if (destination === leftBridge) {
+            leftCount++;
+        } else {
+            rightCount++;
+        }
 
         moveMeshPreservingWorld(mesh, destination);
-
     }
 
     if (!leftCount || !rightCount) {
@@ -575,20 +479,20 @@ try {
     );
 
     bridgeRoot.position.x =
-        -bridgeBounds.centerX * modelScale;
-
-    bridgeRoot.position.z =
-        -bridgeBounds.centerZ * modelScale;
+        -bounds.centerX * modelScale;
 
     bridgeRoot.position.y =
-        -bridgeBounds.minY * modelScale;
+        -bounds.minY * modelScale;
+
+    bridgeRoot.position.z =
+        -bounds.centerZ * modelScale;
+
+}
 
 
-  // ====================================
-// LOAD SEPARATE EXPANSION JOINTS
-// ====================================
-
-status.textContent = "Loading left expansion joint...";
+// ========================================
+// LOAD ONE JOINT MODEL
+// ========================================
 
 async function loadSingleJoint(filename, group) {
 
@@ -603,7 +507,7 @@ async function loadSingleJoint(filename, group) {
         mesh.getTotalVertices() > 0
     );
 
-    if (meshes.length === 0) {
+    if (!meshes.length) {
         throw new Error("No mesh found in " + filename);
     }
 
@@ -612,35 +516,66 @@ async function loadSingleJoint(filename, group) {
     }
 }
 
-// Load the two separate joint models.
 
-await loadSingleJoint("left joint.glb", leftJoint);
+// ========================================
+// LOAD BOTH EXPANSION JOINTS
+// ========================================
 
-status.textContent = "Loading right expansion joint...";
+async function loadJoints() {
 
-await loadSingleJoint("right joint.glb", rightJoint);
+    status.textContent = "Loading left expansion joint...";
 
-// Use the same position and scale as the bridge.
+    await loadSingleJoint(
+        LEFT_JOINT_FILE,
+        leftJoint
+    );
 
-jointRoot.scaling.copyFrom(bridgeRoot.scaling);
-jointRoot.position.copyFrom(bridgeRoot.position);
+    status.textContent = "Loading right expansion joint...";
 
-status.textContent = "Bridge and expansion joints loaded!";
+    await loadSingleJoint(
+        RIGHT_JOINT_FILE,
+        rightJoint
+    );
 
-camera.target.set(0, 12, 0);
+    // Match the bridge scale and height.
+    jointRoot.scaling.copyFrom(bridgeRoot.scaling);
 
-} catch(error) {
+    jointRoot.position.x = bridgeRoot.position.x;
+    jointRoot.position.y = bridgeRoot.position.y;
 
-    console.error(error);
-
-    status.textContent =
-        "MODEL ERROR: " + error.message;
+    // Joint models have a center Z coordinate of 33.
+    // This places their center near the bridge deck.
+    jointRoot.position.z = -33 * modelScale;
 
 }
 
 
 // ========================================
-// SIMULATION VARIABLES
+// LOAD ALL MODELS
+// ========================================
+
+try {
+
+    await loadBridge();
+
+    await loadJoints();
+
+    modelsReady = true;
+
+    status.textContent =
+        "Bridge and expansion joints loaded successfully!";
+
+} catch(error) {
+
+    console.error("3D MODEL ERROR:", error);
+
+    status.textContent =
+        "MODEL ERROR: " + error.message;
+}
+
+
+// ========================================
+// SIMULATION CONTROLS
 // ========================================
 
 const temperatureSlider =
@@ -659,54 +594,51 @@ const materialSelect =
 
 function updateSimulation() {
 
-    const temperature = Number(temperatureSlider.value);
+    const temperature =
+        Number(temperatureSlider.value);
 
-    const mechanical = Number(mechanicalSlider.value);
+    const mechanical =
+        Number(mechanicalSlider.value);
 
-    const alpha = Number(materialSelect.value);
+    const alpha =
+        Number(materialSelect.value);
 
-    const deltaT = temperature - REFERENCE_TEMP;
+    const deltaT =
+        temperature - REFERENCE_TEMP;
 
     // Thermal expansion equation.
-
     const deltaL =
         alpha * BRIDGE_LENGTH * deltaT;
 
     const deltaLmm = deltaL * 1000;
 
-    // Each bridge section moves half the total
-    // thermal length change.
-
+    // Movement of each bridge section.
     const thermalMovement = deltaL / 2;
-
-    // Mechanical adjustment is the requested
-    // total change in gap.
 
     const mechanicalMovement = mechanical / 1000;
 
-    // Positive thermal expansion closes the gap.
-    // Positive mechanical adjustment opens it.
-
+    // Positive mechanical adjustment opens the gap.
     const netMovement =
-        thermalMovement - mechanicalMovement / 2;
-
-    // Convert meters into model units.
+        thermalMovement + mechanicalMovement / 2;
 
     const visualMovement =
         netMovement * modelScale;
 
-    // Move bridge sections.
+    if (modelsReady) {
 
-    leftBridge.position.x = visualMovement;
-    rightBridge.position.x = -visualMovement;
+        // Expansion: sections move away from each other.
+        // Contraction: sections move toward each other.
 
-    // Move the expansion joints with their
-    // corresponding bridge sections.
+        leftBridge.position.x = -visualMovement;
+        rightBridge.position.x = visualMovement;
 
-    leftJoint.position.x = visualMovement;
-    rightJoint.position.x = -visualMovement;
+        leftJoint.position.x = -visualMovement;
+        rightJoint.position.x = visualMovement;
+    }
 
-    // Update all displays.
+    // ====================================
+    // UPDATE DISPLAYS
+    // ====================================
 
     document.getElementById("temperatureValue").textContent =
         temperature + " °C";
@@ -730,26 +662,7 @@ function updateSimulation() {
         alpha.toExponential(2) + " /°C";
 
     document.getElementById("gap").textContent =
-        (deltaLmm - mechanical).toFixed(3) + " mm";
-
-    // Status messages.
-
-    if (deltaT > 0) {
-
-        document.getElementById("status").textContent =
-            "Bridge material is expanding.";
-
-    } else if (deltaT < 0) {
-
-        document.getElementById("status").textContent =
-            "Bridge material is contracting.";
-
-    } else {
-
-        document.getElementById("status").textContent =
-            "Reference temperature reached.";
-
-    }
+        (deltaLmm + mechanical).toFixed(3) + " mm";
 
 }
 
@@ -775,7 +688,7 @@ materialSelect.addEventListener(
 
 
 // ========================================
-// RESET
+// RESET SIMULATION
 // ========================================
 
 document.getElementById("resetButton").addEventListener(
@@ -783,13 +696,10 @@ document.getElementById("resetButton").addEventListener(
     function() {
 
         temperatureSlider.value = 20;
-
         mechanicalSlider.value = 0;
-
         materialSelect.value = "0.000012";
 
         updateSimulation();
-
     }
 );
 
@@ -804,18 +714,16 @@ updateSimulation();
 // ========================================
 
 engine.runRenderLoop(function() {
-
     scene.render();
-
 });
 
 
+// ========================================
 // RESIZE
+// ========================================
 
 window.addEventListener("resize", function() {
-
     engine.resize();
-
 });
 
 })();

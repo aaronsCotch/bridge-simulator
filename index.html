@@ -231,7 +231,6 @@ window.onerror = function(message,source,line,column,error){
     console.error(error);
 
     return false;
-
 };
 
 window.addEventListener("unhandledrejection",function(event){
@@ -240,7 +239,6 @@ window.addEventListener("unhandledrejection",function(event){
     "LOADING ERROR: "+event.reason;
 
     console.error(event.reason);
-
 });
 
 // ========================================
@@ -344,7 +342,13 @@ const rightJointRoot = new BABYLON.TransformNode(
 leftJointRoot.parent = leftBridgeRoot;
 rightJointRoot.parent = rightBridgeRoot;
 
+// ========================================
+// STATE
+// ========================================
+
 let modelScale = 1;
+
+let bridgeReady = false;
 let modelsReady = false;
 
 let bridgeDeckLocalY = null;
@@ -352,8 +356,6 @@ let bridgeDeckLocalY = null;
 // ========================================
 // COORDINATE CONVERSION
 // ========================================
-
-// Convert world coordinates into bridgeRoot coordinates.
 
 function worldToBridge(point){
 
@@ -368,7 +370,6 @@ function worldToBridge(point){
         point,
         inverse
     );
-
 }
 
 // ========================================
@@ -396,14 +397,55 @@ function calculateBridgeSpaceBounds(meshes){
         mesh.getBoundingInfo().boundingBox;
 
         const corners = [
-            new BABYLON.Vector3(box.minimumWorld.x,box.minimumWorld.y,box.minimumWorld.z),
-            new BABYLON.Vector3(box.minimumWorld.x,box.minimumWorld.y,box.maximumWorld.z),
-            new BABYLON.Vector3(box.minimumWorld.x,box.maximumWorld.y,box.minimumWorld.z),
-            new BABYLON.Vector3(box.minimumWorld.x,box.maximumWorld.y,box.maximumWorld.z),
-            new BABYLON.Vector3(box.maximumWorld.x,box.minimumWorld.y,box.minimumWorld.z),
-            new BABYLON.Vector3(box.maximumWorld.x,box.minimumWorld.y,box.maximumWorld.z),
-            new BABYLON.Vector3(box.maximumWorld.x,box.maximumWorld.y,box.minimumWorld.z),
-            new BABYLON.Vector3(box.maximumWorld.x,box.maximumWorld.y,box.maximumWorld.z)
+
+            new BABYLON.Vector3(
+                box.minimumWorld.x,
+                box.minimumWorld.y,
+                box.minimumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.minimumWorld.x,
+                box.minimumWorld.y,
+                box.maximumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.minimumWorld.x,
+                box.maximumWorld.y,
+                box.minimumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.minimumWorld.x,
+                box.maximumWorld.y,
+                box.maximumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.maximumWorld.x,
+                box.minimumWorld.y,
+                box.minimumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.maximumWorld.x,
+                box.minimumWorld.y,
+                box.maximumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.maximumWorld.x,
+                box.maximumWorld.y,
+                box.minimumWorld.z
+            ),
+
+            new BABYLON.Vector3(
+                box.maximumWorld.x,
+                box.maximumWorld.y,
+                box.maximumWorld.z
+            )
+
         ];
 
         for(const corner of corners){
@@ -418,12 +460,11 @@ function calculateBridgeSpaceBounds(meshes){
 
             minZ=Math.min(minZ,p.z);
             maxZ=Math.max(maxZ,p.z);
-
         }
-
     }
 
     return {
+
         minX,maxX,
         minY,maxY,
         minZ,maxZ,
@@ -432,7 +473,6 @@ function calculateBridgeSpaceBounds(meshes){
         centerY:(minY+maxY)/2,
         centerZ:(minZ+maxZ)/2
     };
-
 }
 
 // ========================================
@@ -457,8 +497,9 @@ async function importBridge(filename,parent){
 
     if(!meshes.length){
 
-        throw new Error("Bridge model contains no geometry.");
-
+        throw new Error(
+            "Bridge model contains no geometry."
+        );
     }
 
     for(const mesh of meshes){
@@ -479,11 +520,9 @@ async function importBridge(filename,parent){
         mesh.scaling.copyFrom(scaling);
 
         mesh.rotationQuaternion = rotation;
-
     }
 
     return meshes;
-
 }
 
 // ========================================
@@ -511,7 +550,6 @@ async function importJoint(filename,wrapper){
         throw new Error(
             "No geometry found in "+filename
         );
-
     }
 
     const allNodes = [
@@ -525,10 +563,11 @@ async function importJoint(filename,wrapper){
         !node.parent || !nodeSet.has(node.parent)
     );
 
+    // Keep the imported model hierarchy intact.
+
     for(const root of roots){
 
-        root.parent = wrapper;
-
+        root.setParent(wrapper);
     }
 
     wrapper.computeWorldMatrix(true);
@@ -536,14 +575,14 @@ async function importJoint(filename,wrapper){
     for(const mesh of meshes){
 
         mesh.computeWorldMatrix(true);
-
+        mesh.isVisible = true;
+        mesh.setEnabled(true);
     }
 
     return {
         meshes,
         roots
     };
-
 }
 
 // ========================================
@@ -607,7 +646,6 @@ function splitBridgeGeometry(meshes){
                 rootPosition.y,
                 rootPosition.z
             );
-
         }
 
         const leftPositions=[];
@@ -623,9 +661,11 @@ function splitBridgeGeometry(meshes){
             const c=indices[i+2];
 
             const centerX=(
+
                 transformed[a*3]+
                 transformed[b*3]+
                 transformed[c*3]
+
             )/3;
 
             const targetPositions =
@@ -652,9 +692,7 @@ function splitBridgeGeometry(meshes){
                 }else{
 
                     targetUVs.push(0,0);
-
                 }
-
             }
 
             if(centerX<0){
@@ -662,7 +700,6 @@ function splitBridgeGeometry(meshes){
             }else{
                 rightTriangles++;
             }
-
         }
 
         function createSplitMesh(
@@ -680,6 +717,7 @@ function splitBridgeGeometry(meshes){
             const meshIndices=[];
 
             for(let i=0;i<verts.length/3;i++){
+
                 meshIndices.push(i);
             }
 
@@ -700,9 +738,10 @@ function splitBridgeGeometry(meshes){
 
             data.applyToMesh(mesh,true);
 
+            // Preserve the original material.
+
             mesh.material=material;
             mesh.parent=parent;
-
         }
 
         createSplitMesh(
@@ -722,7 +761,6 @@ function splitBridgeGeometry(meshes){
         );
 
         source.dispose(false,false);
-
     }
 
     if(leftTriangles===0 || rightTriangles===0){
@@ -730,11 +768,9 @@ function splitBridgeGeometry(meshes){
         throw new Error(
             "Could not separate bridge into left and right halves."
         );
-
     }
 
     console.log("Bridge halves separated.");
-
 }
 
 // ========================================
@@ -780,7 +816,6 @@ function findDeckSurfaceY(meshes){
                 );
 
                 points.push(worldToBridge(worldPoint));
-
             }
 
             const a=points[0];
@@ -805,11 +840,8 @@ function findDeckSurfaceY(meshes){
             ){
 
                 heights.push(centerY);
-
             }
-
         }
-
     }
 
     if(!heights.length){
@@ -817,13 +849,11 @@ function findDeckSurfaceY(meshes){
         throw new Error(
             "Could not detect the bridge deck surface."
         );
-
     }
 
     heights.sort((a,b)=>a-b);
 
     return heights[Math.floor(heights.length/2)];
-
 }
 
 // ========================================
@@ -832,39 +862,41 @@ function findDeckSurfaceY(meshes){
 
 function positionJoint(wrapper,meshes,side){
 
+    // Reset the wrapper before measuring its model.
+
+    wrapper.position.set(0,0,0);
+    wrapper.scaling.set(1,1,1);
+
     wrapper.computeWorldMatrix(true);
 
     const bounds =
     calculateBridgeSpaceBounds(meshes);
 
-    // Keep original GLB orientation.
+    /*
+       IMPORTANT:
 
-    wrapper.scaling.set(1,1,1);
-
-    // Position joint horizontally at the expansion gap.
+       The bridge roots already create the gap.
+       Therefore, the joints must NOT receive
+       another BASE_CLOSING_OFFSET here.
+    */
 
     if(side==="left"){
 
-        wrapper.position.x =
-        -bounds.maxX-BASE_CLOSING_OFFSET;
+        wrapper.position.x = -bounds.maxX;
 
     }else{
 
-        wrapper.position.x =
-        -bounds.minX+BASE_CLOSING_OFFSET;
-
+        wrapper.position.x = -bounds.minX;
     }
 
-    // FIX HEIGHT:
-    // Align the highest point of the joint with the deck.
-    // This places the rest of the joint below the deck.
+    // Align the top of the joint with the bridge deck.
 
-    wrapper.position.y +=
+    wrapper.position.y =
     bridgeDeckLocalY-bounds.maxY;
 
-    // Center joint across the bridge.
+    // Center the joint across the bridge.
 
-    wrapper.position.z +=
+    wrapper.position.z =
     -bounds.centerZ;
 
     wrapper.computeWorldMatrix(true);
@@ -878,7 +910,6 @@ function positionJoint(wrapper,meshes,side){
         side+" joint final position:",
         wrapper.position
     );
-
 }
 
 // ========================================
@@ -898,7 +929,9 @@ try{
 
     let minX=Infinity;
     let maxX=-Infinity;
+
     let minY=Infinity;
+
     let minZ=Infinity;
     let maxZ=-Infinity;
 
@@ -916,15 +949,15 @@ try{
 
         minZ=Math.min(minZ,box.minimumWorld.z);
         maxZ=Math.max(maxZ,box.maximumWorld.z);
-
     }
 
     const width=maxX-minX;
 
     if(width<=0){
 
-        throw new Error("Invalid bridge dimensions.");
-
+        throw new Error(
+            "Invalid bridge dimensions."
+        );
     }
 
     modelScale=MODEL_WIDTH/width;
@@ -943,7 +976,7 @@ try{
 
     bridgeRoot.computeWorldMatrix(true);
 
-    // Detect deck height in bridgeRoot coordinates.
+    // Detect deck height.
 
     bridgeDeckLocalY =
     findDeckSurfaceY(bridgeMeshes);
@@ -953,13 +986,20 @@ try{
         bridgeDeckLocalY
     );
 
-    // SPLIT BRIDGE
+    // Split the bridge.
 
     status.textContent="Separating bridge halves...";
 
     splitBridgeGeometry(bridgeMeshes);
 
-    // LOAD LEFT JOINT
+    // The bridge can now respond to sliders,
+    // even if joint loading encounters an error.
+
+    bridgeReady=true;
+
+    updateSimulation();
+
+    // Load left joint.
 
     status.textContent="Loading left interlocking joint...";
 
@@ -968,7 +1008,7 @@ try{
         leftJointRoot
     );
 
-    // LOAD RIGHT JOINT
+    // Load right joint.
 
     status.textContent="Loading right interlocking joint...";
 
@@ -977,9 +1017,9 @@ try{
         rightJointRoot
     );
 
-    // POSITION BOTH JOINTS
+    // Position both joints.
 
-    status.textContent="Adjusting joint height and position...";
+    status.textContent="Adjusting joint positions...";
 
     positionJoint(
         leftJointRoot,
@@ -994,6 +1034,8 @@ try{
     );
 
     modelsReady=true;
+
+    updateSimulation();
 
     status.textContent=
     "Bridge and interlocking joints loaded successfully.";
@@ -1043,15 +1085,35 @@ function updateSimulation(){
     MODEL_WIDTH*
     VISUAL_AMPLIFICATION/2;
 
-    if(modelsReady){
+    // ====================================
+    // MOVE BRIDGE HALVES AND JOINTS
+    // ====================================
+
+    if(bridgeReady){
+
+        /*
+           Negative X = left side.
+           Positive X = right side.
+
+           Expansion:
+           Left moves outward.
+           Right moves outward.
+
+           Contraction:
+           Left moves inward.
+           Right moves inward.
+        */
 
         leftBridgeRoot.position.x =
-        BASE_CLOSING_OFFSET-movementPerSide;
+        -BASE_CLOSING_OFFSET-movementPerSide;
 
         rightBridgeRoot.position.x =
-        -BASE_CLOSING_OFFSET+movementPerSide;
-
+        BASE_CLOSING_OFFSET+movementPerSide;
     }
+
+    // ====================================
+    // UPDATE DISPLAY VALUES
+    // ====================================
 
     document.getElementById("temperatureValue").textContent=
     temperature+" °C";
@@ -1076,7 +1138,6 @@ function updateSimulation(){
 
     document.getElementById("gap").textContent=
     totalGapChangeMm.toFixed(3)+" mm";
-
 }
 
 // ========================================
@@ -1113,7 +1174,6 @@ document.getElementById("resetButton").addEventListener(
         materialSelect.value="0.000012";
 
         updateSimulation();
-
     }
 );
 
@@ -1126,13 +1186,11 @@ updateSimulation();
 engine.runRenderLoop(function(){
 
     scene.render();
-
 });
 
 window.addEventListener("resize",function(){
 
     engine.resize();
-
 });
 
 })();

@@ -1,135 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Suspension Bridge Expansion Simulation</title>
+<title>Suspension Bridge Expansion Simulator</title>
 
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-        body {
-            margin: 0;
-            background: #101827;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
+body {
+    margin: 0;
+    background: #101827;
+    color: white;
+    font-family: Arial, sans-serif;
+}
 
-        header {
-            padding: 20px;
-            text-align: center;
-            background: #17243a;
-        }
+header {
+    text-align: center;
+    padding: 20px;
+    background: #17243a;
+}
 
-        header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
+header h1 {
+    margin: 0;
+    font-size: 25px;
+}
 
-        header p {
-            color: #aabbd0;
-        }
+header p {
+    color: #aabbd0;
+}
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 15px;
-            padding: 15px;
-        }
+.container {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 15px;
+    padding: 15px;
+}
 
-        #renderCanvas {
-            width: 100%;
-            height: 550px;
-            display: block;
-            border-radius: 12px;
-            background: #26374d;
-            touch-action: none;
-        }
+#renderCanvas {
+    width: 100%;
+    height: 600px;
+    display: block;
+    border-radius: 12px;
+    background: #26374d;
+    touch-action: none;
+}
 
-        .controls {
-            background: #1c2a40;
-            padding: 20px;
-            border-radius: 12px;
-        }
+.controls {
+    background: #1c2a40;
+    padding: 20px;
+    border-radius: 12px;
+}
 
-        .controls h2 {
-            margin-top: 0;
-        }
+label {
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 8px;
+}
 
-        label {
-            display: block;
-            margin-top: 20px;
-            margin-bottom: 8px;
-        }
+input, select {
+    width: 100%;
+}
 
-        select,
-        button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-        }
+input[type="range"] {
+    cursor: pointer;
+}
 
-        select {
-            background: #31445e;
-            color: white;
-        }
+select, button {
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+}
 
-        input[type="range"] {
-            width: 100%;
-            cursor: pointer;
-        }
+select {
+    background: #31445e;
+    color: white;
+}
 
-        button {
-            margin-top: 12px;
-            cursor: pointer;
-            background: #2585e8;
-            color: white;
-            font-weight: bold;
-        }
+button {
+    width: 100%;
+    margin-top: 15px;
+    background: #2585e8;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
 
-        button:hover {
-            background: #1468c0;
-        }
+.data {
+    background: #26374d;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
 
-        .data {
-            background: #26374d;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 12px;
-        }
+.data p {
+    margin: 9px 0;
+}
 
-        .data p {
-            margin: 8px 0;
-        }
+.small {
+    font-size: 12px;
+    color: #aabbd0;
+    line-height: 1.6;
+}
 
-        .status {
-            color: #65d6a0;
-            font-size: 13px;
-        }
+.status {
+    color: #65d6a0;
+    font-size: 13px;
+}
 
-        .small {
-            color: #aabbd0;
-            font-size: 12px;
-            line-height: 1.5;
-        }
+@media(max-width: 850px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
 
-        @media(max-width: 800px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-
-            #renderCanvas {
-                height: 400px;
-            }
-        }
-    </style>
+    #renderCanvas {
+        height: 400px;
+    }
+}
+</style>
 </head>
 
 <body>
@@ -147,7 +142,7 @@
 
         <h2>Simulation Controls</h2>
 
-        <label for="temperature">Temperature</label>
+        <label>Temperature</label>
 
         <input
             type="range"
@@ -157,37 +152,54 @@
             value="20"
         >
 
-        <h3>
-            <span id="temperatureValue">20</span> °C
-        </h3>
+        <h3 id="temperatureValue">20 °C</h3>
 
-        <label for="material">Bridge Material</label>
+        <label>Mechanical Adjustment</label>
+
+        <input
+            type="range"
+            id="mechanical"
+            min="-100"
+            max="100"
+            value="0"
+        >
+
+        <h3 id="mechanicalValue">0 mm</h3>
+
+        <label>Bridge Material</label>
 
         <select id="material">
+
             <option value="0.000012">Steel</option>
+
             <option value="0.000023">Aluminum</option>
+
             <option value="0.000010">Concrete</option>
+
         </select>
 
         <div class="data">
 
-            <p>Expansion / Contraction:</p>
+            <p>Thermal Expansion / Contraction</p>
             <h2 id="expansion">0.00 mm</h2>
 
-            <p>Temperature Change:</p>
+            <p>Temperature Change</p>
             <h3 id="temperatureChange">0 °C</h3>
 
-            <p>Joint Movement:</p>
+            <p>Joint Movement</p>
             <h3 id="jointMovement">0.00 mm</h3>
 
-            <p>Expansion Gap:</p>
-            <h3 id="gap">20.00 units</h3>
+            <p>Mechanical Adjustment</p>
+            <h3 id="mechanicalResult">0.00 mm</h3>
 
-            <p>Material Coefficient:</p>
+            <p>Material Coefficient</p>
             <h3 id="coefficient">0.000012 /°C</h3>
 
+            <p>Calculated Gap Change</p>
+            <h3 id="gap">0.00 mm</h3>
+
             <p id="status" class="status">
-                Bridge is at reference temperature.
+                Loading 3D models...
             </p>
 
         </div>
@@ -198,7 +210,7 @@
 
         <p class="small">
             Reference temperature: 20°C<br>
-            Original bridge length: 50 meters<br>
+            Bridge length: 50 meters<br>
             Formula: ΔL = α × L₀ × ΔT
         </p>
 
@@ -208,806 +220,578 @@
 
 <script>
 
-(() => {
+(async function() {
 
-    // =========================================
-    // CANVAS AND ENGINE
-    // =========================================
+"use strict";
 
-    const canvas = document.getElementById("renderCanvas");
+// ========================================
+// CONFIGURATION
+// ========================================
 
-    if (!canvas || !window.BABYLON) {
-        document.getElementById("status").textContent =
-            "Error: Babylon.js could not be loaded.";
-        return;
+const BASE_URL =
+"https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
+
+const BRIDGE_FILE = "2bridges.glb";
+const JOINT_FILE = "2joints.glb";
+
+const REFERENCE_TEMP = 20;
+const BRIDGE_LENGTH = 50;
+
+const MODEL_WIDTH = 80;
+
+const canvas = document.getElementById("renderCanvas");
+
+const status = document.getElementById("status");
+
+
+// ========================================
+// BABYLON ENGINE
+// ========================================
+
+const engine = new BABYLON.Engine(canvas, true);
+
+const scene = new BABYLON.Scene(engine);
+
+scene.clearColor = new BABYLON.Color4(
+    0.06, 0.10, 0.16, 1
+);
+
+
+// ========================================
+// CAMERA
+// ========================================
+
+const camera = new BABYLON.ArcRotateCamera(
+    "camera",
+    -Math.PI / 2,
+    Math.PI / 3,
+    105,
+    new BABYLON.Vector3(0, 12, 0),
+    scene
+);
+
+camera.attachControl(canvas, true);
+
+camera.lowerRadiusLimit = 25;
+camera.upperRadiusLimit = 180;
+
+
+// ========================================
+// LIGHTING
+// ========================================
+
+const light = new BABYLON.HemisphericLight(
+    "ambient",
+    new BABYLON.Vector3(0, 1, 0),
+    scene
+);
+
+light.intensity = 1.0;
+
+const directional = new BABYLON.DirectionalLight(
+    "directional",
+    new BABYLON.Vector3(-1, -2, 1),
+    scene
+);
+
+directional.position.set(30, 80, -30);
+directional.intensity = 0.8;
+
+
+// ========================================
+// GROUND
+// ========================================
+
+const ground = BABYLON.MeshBuilder.CreateGround(
+    "ground",
+    {
+        width: 160,
+        height: 100
+    },
+    scene
+);
+
+const groundMat = new BABYLON.StandardMaterial(
+    "groundMat",
+    scene
+);
+
+groundMat.diffuseColor = new BABYLON.Color3(
+    0.16, 0.25, 0.23
+);
+
+ground.material = groundMat;
+
+
+// ========================================
+// MODEL GROUPS
+// ========================================
+
+const bridgeRoot = new BABYLON.TransformNode(
+    "bridgeRoot",
+    scene
+);
+
+const jointRoot = new BABYLON.TransformNode(
+    "jointRoot",
+    scene
+);
+
+const leftBridge = new BABYLON.TransformNode(
+    "leftBridge",
+    scene
+);
+
+const rightBridge = new BABYLON.TransformNode(
+    "rightBridge",
+    scene
+);
+
+const leftJoint = new BABYLON.TransformNode(
+    "leftJoint",
+    scene
+);
+
+const rightJoint = new BABYLON.TransformNode(
+    "rightJoint",
+    scene
+);
+
+leftBridge.parent = bridgeRoot;
+rightBridge.parent = bridgeRoot;
+
+leftJoint.parent = jointRoot;
+rightJoint.parent = jointRoot;
+
+
+// ========================================
+// IMPORT AND SPLIT MODEL
+// ========================================
+
+function getMeshBounds(meshes) {
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+
+    let minY = Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+
+    for (const mesh of meshes) {
+
+        mesh.computeWorldMatrix(true);
+
+        const box = mesh.getBoundingInfo().boundingBox;
+
+        minX = Math.min(minX, box.minimumWorld.x);
+        maxX = Math.max(maxX, box.maximumWorld.x);
+
+        minY = Math.min(minY, box.minimumWorld.y);
+        minZ = Math.min(minZ, box.minimumWorld.z);
+        maxZ = Math.max(maxZ, box.maximumWorld.z);
+
     }
 
-    const engine = new BABYLON.Engine(canvas, true);
+    return {
+        minX,
+        maxX,
+        minY,
+        minZ,
+        maxZ,
+        centerX: (minX + maxX) / 2,
+        centerZ: (minZ + maxZ) / 2
+    };
 
-    const scene = new BABYLON.Scene(engine);
-
-    scene.clearColor = new BABYLON.Color4(
-        0.06,
-        0.10,
-        0.16,
-        1
-    );
+}
 
 
-    // =========================================
-    // CAMERA
-    // =========================================
+function moveMeshPreservingWorld(mesh, parent) {
 
-    const camera = new BABYLON.ArcRotateCamera(
-        "camera",
-        -Math.PI / 2,
-        Math.PI / 3,
-        100,
-        new BABYLON.Vector3(-7, 35, 2.7),
+    mesh.computeWorldMatrix(true);
+
+    const world = mesh.getWorldMatrix().clone();
+
+    const scaling = BABYLON.Vector3.Zero();
+    const rotation = BABYLON.Quaternion.Identity();
+    const position = BABYLON.Vector3.Zero();
+
+    world.decompose(scaling, rotation, position);
+
+    mesh.parent = parent;
+
+    mesh.position.copyFrom(position);
+    mesh.scaling.copyFrom(scaling);
+
+    mesh.rotationQuaternion = rotation;
+
+}
+
+
+async function loadSplitModel(filename, root, leftGroup, rightGroup, scale) {
+
+    const result = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        filename,
         scene
     );
 
-    camera.attachControl(canvas, true);
-
-    camera.wheelPrecision = 30;
-    camera.lowerRadiusLimit = 35;
-    camera.upperRadiusLimit = 150;
-
-
-    // =========================================
-    // LIGHTING
-    // =========================================
-
-    const ambientLight = new BABYLON.HemisphericLight(
-        "ambientLight",
-        new BABYLON.Vector3(0, 1, 0),
-        scene
+    const meshes = result.meshes.filter(mesh =>
+        mesh.getTotalVertices() > 0
     );
 
-    ambientLight.intensity = 0.8;
+    if (meshes.length < 2) {
 
-    const mainLight = new BABYLON.DirectionalLight(
-        "mainLight",
-        new BABYLON.Vector3(-1, -2, 1),
-        scene
-    );
+        throw new Error(
+            filename + " needs at least two separate mesh parts " +
+            "to animate its left and right sections."
+        );
 
-    mainLight.position = new BABYLON.Vector3(
-        20,
-        70,
-        -30
-    );
+    }
 
-    mainLight.intensity = 0.9;
+    const bounds = getMeshBounds(meshes);
 
+    const width = bounds.maxX - bounds.minX;
 
-    // =========================================
-    // MATERIALS
-    // =========================================
+    if (width <= 0) {
+        throw new Error("Invalid model width: " + filename);
+    }
 
-    const concreteMaterial = new BABYLON.StandardMaterial(
-        "concreteMaterial",
-        scene
-    );
+    const centerX = bounds.centerX;
+    const centerZ = bounds.centerZ;
 
-    concreteMaterial.diffuseColor =
-        new BABYLON.Color3(0.55, 0.58, 0.62);
+    const midpoint = centerX;
 
+    let leftCount = 0;
+    let rightCount = 0;
 
-    const roadMaterial = new BABYLON.StandardMaterial(
-        "roadMaterial",
-        scene
-    );
+    for (const mesh of meshes) {
 
-    roadMaterial.diffuseColor =
-        new BABYLON.Color3(0.16, 0.19, 0.23);
+        const box = mesh.getBoundingInfo().boundingBox;
 
+        const meshCenter =
+            (box.minimumWorld.x + box.maximumWorld.x) / 2;
 
-    const steelMaterial = new BABYLON.StandardMaterial(
-        "steelMaterial",
-        scene
-    );
+        const destination =
+            meshCenter < midpoint ? leftGroup : rightGroup;
 
-    steelMaterial.diffuseColor =
-        new BABYLON.Color3(0.65, 0.72, 0.80);
+        if (destination === leftGroup) leftCount++;
+        else rightCount++;
 
-    steelMaterial.metallic = 0.7;
-    steelMaterial.roughness = 0.3;
+        moveMeshPreservingWorld(mesh, destination);
 
+    }
 
-    const cableMaterial = new BABYLON.StandardMaterial(
-        "cableMaterial",
-        scene
-    );
+    if (!leftCount || !rightCount) {
 
-    cableMaterial.diffuseColor =
-        new BABYLON.Color3(0.85, 0.75, 0.48);
+        throw new Error(
+            "Could not separate the left and right parts of " + filename
+        );
 
+    }
 
-    const jointMaterial = new BABYLON.StandardMaterial(
-        "jointMaterial",
-        scene
-    );
+    root.scaling.set(scale, scale, scale);
 
-    jointMaterial.diffuseColor =
-        new BABYLON.Color3(0.25, 0.32, 0.40);
+    root.position.x = -centerX * scale;
+    root.position.z = -centerZ * scale;
+    root.position.y = -bounds.minY * scale;
 
-
-    const toothMaterial = new BABYLON.StandardMaterial(
-        "toothMaterial",
-        scene
-    );
-
-    toothMaterial.diffuseColor =
-        new BABYLON.Color3(0.80, 0.84, 0.90);
-
-
-    const groundMaterial = new BABYLON.StandardMaterial(
-        "groundMaterial",
-        scene
-    );
-
-    groundMaterial.diffuseColor =
-        new BABYLON.Color3(0.18, 0.29, 0.25);
-
-
-    // =========================================
-    // HELPER FUNCTIONS
-    // =========================================
-
-    function createBox(
-        name,
+    return {
         width,
-        height,
-        depth,
-        position,
-        material
-    ) {
+        leftCount,
+        rightCount
+    };
 
-        const box = BABYLON.MeshBuilder.CreateBox(
-            name,
-            {
-                width: width,
-                height: height,
-                depth: depth
-            },
-            scene
-        );
-
-        box.position = position.clone();
-        box.material = material;
-
-        return box;
-    }
+}
 
 
-    function createCable(name, points, diameter = 0.16) {
+// ========================================
+// LOAD BOTH MODELS
+// ========================================
 
-        const cable = BABYLON.MeshBuilder.CreateTube(
-            name,
-            {
-                path: points,
-                radius: diameter,
-                tessellation: 10
-            },
-            scene
-        );
+let modelScale = 1;
 
-        cable.material = cableMaterial;
+try {
 
-        return cable;
-    }
+    status.textContent = "Loading bridge model...";
 
+    // Load bridge first to calculate common scale.
 
-    // =========================================
-    // GROUND
-    // =========================================
-
-    const ground = BABYLON.MeshBuilder.CreateGround(
-        "ground",
-        {
-            width: 120,
-            height: 50
-        },
+    const bridgeResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        BRIDGE_FILE,
         scene
     );
 
-    ground.position.y = 0;
-    ground.material = groundMaterial;
-
-
-    // =========================================
-    // BRIDGE DIMENSIONS
-    // =========================================
-
-    const deckY = 35.5;
-    const deckZ = 2.7;
-    const deckWidth = 8;
-
-    const leftDeckStart = -45;
-    const leftDeckEnd = -17.75;
-
-    const rightDeckStart = 2.25;
-    const rightDeckEnd = 35;
-
-
-    // =========================================
-    // BRIDGE DECK
-    // =========================================
-
-    const leftDeckLength =
-        leftDeckEnd - leftDeckStart;
-
-    const rightDeckLength =
-        rightDeckEnd - rightDeckStart;
-
-
-    const leftDeck = createBox(
-        "leftDeck",
-        leftDeckLength,
-        1.2,
-        deckWidth,
-        new BABYLON.Vector3(
-            (leftDeckStart + leftDeckEnd) / 2,
-            deckY,
-            deckZ
-        ),
-        roadMaterial
+    const bridgeMeshes = bridgeResult.meshes.filter(mesh =>
+        mesh.getTotalVertices() > 0
     );
 
-
-    const rightDeck = createBox(
-        "rightDeck",
-        rightDeckLength,
-        1.2,
-        deckWidth,
-        new BABYLON.Vector3(
-            (rightDeckStart + rightDeckEnd) / 2,
-            deckY,
-            deckZ
-        ),
-        roadMaterial
-    );
-
-
-    // =========================================
-    // BRIDGE SIDE RAILINGS
-    // =========================================
-
-    const railHeight = 1.1;
-
-    for (const zSide of [
-        deckZ - deckWidth / 2,
-        deckZ + deckWidth / 2
-    ]) {
-
-        createBox(
-            "leftRail",
-            leftDeckLength,
-            0.25,
-            0.25,
-            new BABYLON.Vector3(
-                (leftDeckStart + leftDeckEnd) / 2,
-                deckY + railHeight,
-                zSide
-            ),
-            steelMaterial
+    if (bridgeMeshes.length < 2) {
+        throw new Error(
+            "The bridge model does not contain separate left and right mesh parts."
         );
+    }
 
-        createBox(
-            "rightRail",
-            rightDeckLength,
-            0.25,
-            0.25,
-            new BABYLON.Vector3(
-                (rightDeckStart + rightDeckEnd) / 2,
-                deckY + railHeight,
-                zSide
-            ),
-            steelMaterial
-        );
+    const bridgeBounds = getMeshBounds(bridgeMeshes);
+
+    const bridgeWidth = bridgeBounds.maxX - bridgeBounds.minX;
+
+    modelScale = MODEL_WIDTH / bridgeWidth;
+
+    // Split bridge meshes.
+
+    let leftCount = 0;
+    let rightCount = 0;
+
+    for (const mesh of bridgeMeshes) {
+
+        const box = mesh.getBoundingInfo().boundingBox;
+
+        const center =
+            (box.minimumWorld.x + box.maximumWorld.x) / 2;
+
+        const destination =
+            center < bridgeBounds.centerX
+            ? leftBridge
+            : rightBridge;
+
+        if (destination === leftBridge) leftCount++;
+        else rightCount++;
+
+        moveMeshPreservingWorld(mesh, destination);
 
     }
 
+    if (!leftCount || !rightCount) {
+        throw new Error("Could not separate bridge sections.");
+    }
 
-    // =========================================
-    // BRIDGE TOWERS
-    // =========================================
-
-    const towerPositions = [-30, 15];
-
-    towerPositions.forEach((x, index) => {
-
-        const towerHeight = 25;
-        const towerY = deckY + towerHeight / 2;
-
-        // Left tower column
-        createBox(
-            "towerColumnLeft" + index,
-            1.8,
-            towerHeight,
-            1.8,
-            new BABYLON.Vector3(
-                x,
-                towerY,
-                deckZ - 3
-            ),
-            concreteMaterial
-        );
-
-        // Right tower column
-        createBox(
-            "towerColumnRight" + index,
-            1.8,
-            towerHeight,
-            1.8,
-            new BABYLON.Vector3(
-                x,
-                towerY,
-                deckZ + 3
-            ),
-            concreteMaterial
-        );
-
-        // Tower top beam
-        createBox(
-            "towerTop" + index,
-            2,
-            1.5,
-            8,
-            new BABYLON.Vector3(
-                x,
-                deckY + towerHeight,
-                deckZ
-            ),
-            concreteMaterial
-        );
-
-    });
-
-
-    // =========================================
-    // SUSPENSION CABLES
-    // =========================================
-
-    const cablePointsFront = [
-        new BABYLON.Vector3(-45, 60, deckZ - 3),
-        new BABYLON.Vector3(-30, 55, deckZ - 3),
-        new BABYLON.Vector3(-10, 49, deckZ - 3),
-        new BABYLON.Vector3(15, 55, deckZ - 3),
-        new BABYLON.Vector3(35, 60, deckZ - 3)
-    ];
-
-    const cablePointsBack = [
-        new BABYLON.Vector3(-45, 60, deckZ + 3),
-        new BABYLON.Vector3(-30, 55, deckZ + 3),
-        new BABYLON.Vector3(-10, 49, deckZ + 3),
-        new BABYLON.Vector3(15, 55, deckZ + 3),
-        new BABYLON.Vector3(35, 60, deckZ + 3)
-    ];
-
-    createCable("frontMainCable", cablePointsFront, 0.20);
-    createCable("backMainCable", cablePointsBack, 0.20);
-
-
-    // =========================================
-    // VERTICAL SUSPENSION HANGERS
-    // =========================================
-
-    const hangerXs = [
-        -42, -38, -34, -26, -22,
-        -18, 5, 9, 13, 19, 25, 31
-    ];
-
-    hangerXs.forEach((x, index) => {
-
-        const normalized =
-            (x + 5) / 40;
-
-        const cableY =
-            49 + Math.abs(normalized) * 9;
-
-        const frontCable = BABYLON.MeshBuilder.CreateCylinder(
-            "frontHanger" + index,
-            {
-                height: Math.max(1, cableY - deckY),
-                diameter: 0.12
-            },
-            scene
-        );
-
-        frontCable.position = new BABYLON.Vector3(
-            x,
-            (cableY + deckY) / 2,
-            deckZ - 3
-        );
-
-        frontCable.material = cableMaterial;
-
-
-        const backCable = BABYLON.MeshBuilder.CreateCylinder(
-            "backHanger" + index,
-            {
-                height: Math.max(1, cableY - deckY),
-                diameter: 0.12
-            },
-            scene
-        );
-
-        backCable.position = new BABYLON.Vector3(
-            x,
-            (cableY + deckY) / 2,
-            deckZ + 3
-        );
-
-        backCable.material = cableMaterial;
-
-    });
-
-
-    // =========================================
-    // EXPANSION JOINT GROUPS
-    // =========================================
-
-    const leftJoint = new BABYLON.TransformNode(
-        "leftJoint",
-        scene
+    bridgeRoot.scaling.set(
+        modelScale,
+        modelScale,
+        modelScale
     );
 
-    const rightJoint = new BABYLON.TransformNode(
-        "rightJoint",
-        scene
+    bridgeRoot.position.x =
+        -bridgeBounds.centerX * modelScale;
+
+    bridgeRoot.position.z =
+        -bridgeBounds.centerZ * modelScale;
+
+    bridgeRoot.position.y =
+        -bridgeBounds.minY * modelScale;
+
+
+    // ====================================
+    // LOAD JOINT MODEL
+    // ====================================
+
+    status.textContent = "Loading expansion joints...";
+
+    await loadSplitModel(
+        JOINT_FILE,
+        jointRoot,
+        leftJoint,
+        rightJoint,
+        modelScale
     );
 
+    status.textContent = "Both 3D models loaded successfully.";
 
-    // ORIGINAL POSITIONS
-    leftJoint.position.set(-17.75, 35.5, 2.7);
+    camera.target.set(0, 12, 0);
 
-    rightJoint.position.set(2.25, 35.5, 2.7);
+} catch(error) {
 
+    console.error(error);
 
-    // =========================================
-    // LEFT JOINT PLATE
-    // =========================================
+    status.textContent =
+        "MODEL ERROR: " + error.message;
 
-    const leftPlate = BABYLON.MeshBuilder.CreateBox(
-        "leftJointPlate",
-        {
-            width: 2.5,
-            height: 0.25,
-            depth: 7.8
-        },
-        scene
-    );
-
-    leftPlate.parent = leftJoint;
-
-    leftPlate.position.set(
-        0.65,
-        0.75,
-        0
-    );
-
-    leftPlate.material = jointMaterial;
+}
 
 
-    // =========================================
-    // RIGHT JOINT PLATE
-    // =========================================
+// ========================================
+// SIMULATION VARIABLES
+// ========================================
 
-    const rightPlate = BABYLON.MeshBuilder.CreateBox(
-        "rightJointPlate",
-        {
-            width: 2.5,
-            height: 0.25,
-            depth: 7.8
-        },
-        scene
-    );
+const temperatureSlider =
+    document.getElementById("temperature");
 
-    rightPlate.parent = rightJoint;
+const mechanicalSlider =
+    document.getElementById("mechanical");
 
-    rightPlate.position.set(
-        -0.65,
-        0.75,
-        0
-    );
-
-    rightPlate.material = jointMaterial;
+const materialSelect =
+    document.getElementById("material");
 
 
-    // =========================================
-    // LEFT JOINT TEETH
-    // =========================================
+// ========================================
+// SIMULATION CALCULATIONS
+// ========================================
 
-    for (let i = 0; i < 8; i++) {
+function updateSimulation() {
 
-        const tooth = BABYLON.MeshBuilder.CreateBox(
-            "leftTooth" + i,
-            {
-                width: 0.35,
-                height: 0.18,
-                depth: 0.65
-            },
-            scene
-        );
+    const temperature = Number(temperatureSlider.value);
 
-        tooth.parent = leftJoint;
+    const mechanical = Number(mechanicalSlider.value);
 
-        tooth.position.set(
-            1.55,
-            0.95,
-            -3.1 + i * 0.88
-        );
+    const alpha = Number(materialSelect.value);
 
-        tooth.material = toothMaterial;
+    const deltaT = temperature - REFERENCE_TEMP;
+
+    // Thermal expansion equation.
+
+    const deltaL =
+        alpha * BRIDGE_LENGTH * deltaT;
+
+    const deltaLmm = deltaL * 1000;
+
+    // Each bridge section moves half the total
+    // thermal length change.
+
+    const thermalMovement = deltaL / 2;
+
+    // Mechanical adjustment is the requested
+    // total change in gap.
+
+    const mechanicalMovement = mechanical / 1000;
+
+    // Positive thermal expansion closes the gap.
+    // Positive mechanical adjustment opens it.
+
+    const netMovement =
+        thermalMovement - mechanicalMovement / 2;
+
+    // Convert meters into model units.
+
+    const visualMovement =
+        netMovement * modelScale;
+
+    // Move bridge sections.
+
+    leftBridge.position.x = visualMovement;
+    rightBridge.position.x = -visualMovement;
+
+    // Move the expansion joints with their
+    // corresponding bridge sections.
+
+    leftJoint.position.x = visualMovement;
+    rightJoint.position.x = -visualMovement;
+
+    // Update all displays.
+
+    document.getElementById("temperatureValue").textContent =
+        temperature + " °C";
+
+    document.getElementById("mechanicalValue").textContent =
+        mechanical + " mm";
+
+    document.getElementById("expansion").textContent =
+        deltaLmm.toFixed(3) + " mm";
+
+    document.getElementById("temperatureChange").textContent =
+        (deltaT > 0 ? "+" : "") + deltaT + " °C";
+
+    document.getElementById("jointMovement").textContent =
+        (thermalMovement * 1000).toFixed(3) + " mm per side";
+
+    document.getElementById("mechanicalResult").textContent =
+        mechanical + " mm";
+
+    document.getElementById("coefficient").textContent =
+        alpha.toExponential(2) + " /°C";
+
+    document.getElementById("gap").textContent =
+        (deltaLmm - mechanical).toFixed(3) + " mm";
+
+    // Status messages.
+
+    if (deltaT > 0) {
+
+        document.getElementById("status").textContent =
+            "Bridge material is expanding.";
+
+    } else if (deltaT < 0) {
+
+        document.getElementById("status").textContent =
+            "Bridge material is contracting.";
+
+    } else {
+
+        document.getElementById("status").textContent =
+            "Reference temperature reached.";
 
     }
 
+}
 
-    // =========================================
-    // RIGHT JOINT TEETH
-    // =========================================
 
-    for (let i = 0; i < 8; i++) {
+// ========================================
+// EVENT LISTENERS
+// ========================================
 
-        const tooth = BABYLON.MeshBuilder.CreateBox(
-            "rightTooth" + i,
-            {
-                width: 0.35,
-                height: 0.18,
-                depth: 0.65
-            },
-            scene
-        );
+temperatureSlider.addEventListener(
+    "input",
+    updateSimulation
+);
 
-        tooth.parent = rightJoint;
+mechanicalSlider.addEventListener(
+    "input",
+    updateSimulation
+);
 
-        tooth.position.set(
-            -1.55,
-            0.95,
-            -3.1 + i * 0.88
-        );
+materialSelect.addEventListener(
+    "change",
+    updateSimulation
+);
 
-        tooth.material = toothMaterial;
+
+// ========================================
+// RESET
+// ========================================
+
+document.getElementById("resetButton").addEventListener(
+    "click",
+    function() {
+
+        temperatureSlider.value = 20;
+
+        mechanicalSlider.value = 0;
+
+        materialSelect.value = "0.000012";
+
+        updateSimulation();
 
     }
+);
 
 
-    // =========================================
-    // JOINT SUPPORTS
-    // =========================================
+// INITIAL UPDATE
 
-    const leftSupport = createBox(
-        "leftJointSupport",
-        3,
-        0.4,
-        8,
-        new BABYLON.Vector3(
-            -18.5,
-            34.9,
-            deckZ
-        ),
-        steelMaterial
-    );
+updateSimulation();
 
-    const rightSupport = createBox(
-        "rightJointSupport",
-        3,
-        0.4,
-        8,
-        new BABYLON.Vector3(
-            3,
-            34.9,
-            deckZ
-        ),
-        steelMaterial
-    );
 
+// ========================================
+// RENDER LOOP
+// ========================================
 
-    // =========================================
-    // SIMULATION VARIABLES
-    // =========================================
+engine.runRenderLoop(function() {
 
-    const referenceTemperature = 20;
+    scene.render();
 
-    const originalLength = 50;
+});
 
-    const originalGap = 20;
 
-    const temperatureSlider =
-        document.getElementById("temperature");
+// RESIZE
 
-    const temperatureValue =
-        document.getElementById("temperatureValue");
+window.addEventListener("resize", function() {
 
-    const materialSelect =
-        document.getElementById("material");
+    engine.resize();
 
-    const expansionDisplay =
-        document.getElementById("expansion");
-
-    const temperatureChangeDisplay =
-        document.getElementById("temperatureChange");
-
-    const jointMovementDisplay =
-        document.getElementById("jointMovement");
-
-    const gapDisplay =
-        document.getElementById("gap");
-
-    const coefficientDisplay =
-        document.getElementById("coefficient");
-
-    const statusDisplay =
-        document.getElementById("status");
-
-    const resetButton =
-        document.getElementById("resetButton");
-
-
-    // =========================================
-    // PHYSICS CALCULATION
-    // =========================================
-
-    function updateSimulation() {
-
-        const temperature =
-            Number(temperatureSlider.value);
-
-        const alpha =
-            Number(materialSelect.value);
-
-        const deltaT =
-            temperature - referenceTemperature;
-
-
-        // Thermal expansion equation
-        // ΔL = α × L₀ × ΔT
-
-        const deltaL =
-            alpha * originalLength * deltaT;
-
-
-        // Convert meters to millimeters
-
-        const deltaLmm =
-            deltaL * 1000;
-
-
-        // Each side moves half the total change
-
-        const movementMeters =
-            deltaL / 2;
-
-
-        // Visual scale for the 3D joint movement
-
-        const visualMovement =
-            movementMeters * 2;
-
-
-        // Only the expansion joints move
-
-        leftJoint.position.x =
-            -17.75 + visualMovement;
-
-        rightJoint.position.x =
-            2.25 - visualMovement;
-
-
-        // New expansion gap in visual units
-
-        const currentGap =
-            originalGap - visualMovement * 2;
-
-
-        // Update display
-
-        temperatureValue.textContent =
-            temperature.toFixed(0);
-
-        expansionDisplay.textContent =
-            deltaLmm.toFixed(2) + " mm";
-
-        temperatureChangeDisplay.textContent =
-            (deltaT >= 0 ? "+" : "") +
-            deltaT.toFixed(0) + " °C";
-
-        jointMovementDisplay.textContent =
-            (movementMeters * 1000).toFixed(2) +
-            " mm per side";
-
-        gapDisplay.textContent =
-            currentGap.toFixed(2) + " units";
-
-        coefficientDisplay.textContent =
-            alpha.toFixed(6) + " /°C";
-
-
-        // Status message
-
-        if (deltaT > 0) {
-
-            statusDisplay.textContent =
-                "Bridge material is expanding.";
-
-        } else if (deltaT < 0) {
-
-            statusDisplay.textContent =
-                "Bridge material is contracting.";
-
-        } else {
-
-            statusDisplay.textContent =
-                "Bridge is at reference temperature.";
-
-        }
-
-    }
-
-
-    // =========================================
-    // EVENT LISTENERS
-    // =========================================
-
-    temperatureSlider.addEventListener(
-        "input",
-        updateSimulation
-    );
-
-    materialSelect.addEventListener(
-        "change",
-        updateSimulation
-    );
-
-
-    resetButton.addEventListener(
-        "click",
-        function () {
-
-            temperatureSlider.value = 20;
-
-            materialSelect.value = "0.000012";
-
-            updateSimulation();
-
-        }
-    );
-
-
-    // Initial update
-
-    updateSimulation();
-
-
-    // =========================================
-    // RENDER LOOP
-    // =========================================
-
-    engine.runRenderLoop(function () {
-
-        scene.render();
-
-    });
-
-
-    // =========================================
-    // RESIZE
-    // =========================================
-
-    window.addEventListener(
-        "resize",
-        function () {
-
-            engine.resize();
-
-        }
-    );
-
+});
 
 })();
-
 </script>
 
 </body>

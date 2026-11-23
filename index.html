@@ -144,12 +144,12 @@ const scene = new BABYLON.Scene(engine);
 scene.clearColor = new BABYLON.Color4(0.06,0.10,0.16,1);
 
 const camera = new BABYLON.ArcRotateCamera(
-"camera",
--Math.PI/2,
-Math.PI/3,
-105,
-new BABYLON.Vector3(0,12,0),
-scene
+    "camera",
+    -Math.PI/2,
+    Math.PI/3,
+    105,
+    new BABYLON.Vector3(0,12,0),
+    scene
 );
 
 camera.attachControl(canvas,true);
@@ -157,26 +157,26 @@ camera.lowerRadiusLimit = 25;
 camera.upperRadiusLimit = 180;
 
 const ambient = new BABYLON.HemisphericLight(
-"ambient",
-new BABYLON.Vector3(0,1,0),
-scene
+    "ambient",
+    new BABYLON.Vector3(0,1,0),
+    scene
 );
 
 ambient.intensity = 1;
 
 const directional = new BABYLON.DirectionalLight(
-"directional",
-new BABYLON.Vector3(-1,-2,1),
-scene
+    "directional",
+    new BABYLON.Vector3(-1,-2,1),
+    scene
 );
 
 directional.position.set(30,80,-30);
 directional.intensity = 0.8;
 
 const ground = BABYLON.MeshBuilder.CreateGround(
-"ground",
-{width:160,height:100},
-scene
+    "ground",
+    {width:160,height:100},
+    scene
 );
 
 const groundMat = new BABYLON.StandardMaterial("groundMat",scene);
@@ -189,26 +189,26 @@ ground.material = groundMat;
 // ========================================
 
 const bridgeRoot = new BABYLON.TransformNode(
-"bridgeRoot",
-scene
+    "bridgeRoot",
+    scene
 );
 
 const leftBridgeRoot = new BABYLON.TransformNode(
-"leftBridgeRoot",
-scene
+    "leftBridgeRoot",
+    scene
 );
 
 const rightBridgeRoot = new BABYLON.TransformNode(
-"rightBridgeRoot",
-scene
+    "rightBridgeRoot",
+    scene
 );
 
 leftBridgeRoot.parent = bridgeRoot;
 rightBridgeRoot.parent = bridgeRoot;
 
 const jointRoot = new BABYLON.TransformNode(
-"jointRoot",
-scene
+    "jointRoot",
+    scene
 );
 
 let modelScale = 1;
@@ -268,7 +268,7 @@ function calculateBounds(meshes){
 
         minY = Math.min(minY,box.minimumWorld.y);
         maxY = Math.max(maxY,box.maximumWorld.y);
-        
+
         minZ = Math.min(minZ,box.minimumWorld.z);
         maxZ = Math.max(maxZ,box.maximumWorld.z);
     }
@@ -281,6 +281,7 @@ function calculateBounds(meshes){
         minZ,
         maxZ,
         centerX:(minX+maxX)/2,
+        centerY:(minY+maxY)/2,
         centerZ:(minZ+maxZ)/2
     };
 }
@@ -344,9 +345,7 @@ function createSplitMesh(name,positions,uvs,parent,material){
 
     vertexData.applyToMesh(mesh,true);
 
-    // Preserve the original GLB material.
     mesh.material = material;
-
     mesh.parent = parent;
 
     return mesh;
@@ -484,7 +483,6 @@ function splitBridgeGeometry(meshes){
             source.material
         );
 
-        // Do not dispose the original materials or textures.
         source.dispose(false,false);
     }
 
@@ -626,7 +624,6 @@ function splitJointGeometry(meshes){
             source.material
         );
 
-        // Preserve original joint materials and textures.
         source.dispose(false,false);
     }
 
@@ -641,6 +638,7 @@ function splitJointGeometry(meshes){
     console.log("Right joint triangles:",rightTriangles);
 }
 
+
 // ========================================
 // ZIPPER-STYLE EXPANSION JOINT TEETH
 // ========================================
@@ -649,17 +647,16 @@ function createZipperTeeth(jointMeshes){
 
     console.log("Creating interlocking zipper teeth...");
 
-    // Get the actual joint dimensions after positioning.
     const bounds = calculateBounds(jointMeshes);
 
-    // Convert world coordinates into bridge-local coordinates.
+    // Convert the joint center into bridge-local coordinates.
     const inverseRoot = bridgeRoot.getWorldMatrix().clone();
     inverseRoot.invert();
 
     const worldCenter = new BABYLON.Vector3(
-        (bounds.minX+bounds.maxX)/2,
-        (bounds.minY+bounds.maxY)/2,
-        (bounds.minZ+bounds.maxZ)/2
+        bounds.centerX,
+        bounds.centerY,
+        bounds.centerZ
     );
 
     const center = BABYLON.Vector3.TransformCoordinates(
@@ -667,13 +664,18 @@ function createZipperTeeth(jointMeshes){
         inverseRoot
     );
 
+    // Joint dimensions in bridge-local coordinates.
     const jointWidth =
         (bounds.maxZ-bounds.minZ)/modelScale;
 
     const jointHeight =
         (bounds.maxY-bounds.minY)/modelScale;
 
-    // Zipper dimensions.
+    if(jointWidth<=0 || !Number.isFinite(jointWidth)){
+        throw new Error("Invalid expansion joint width.");
+    }
+
+    // Zipper tooth dimensions.
     const toothCount = 10;
     const pitch = jointWidth/toothCount;
 
@@ -685,7 +687,6 @@ function createZipperTeeth(jointMeshes){
         jointHeight*0.4
     );
 
-    // Preserve original joint material.
     const originalMaterial =
         jointMeshes.find(mesh=>mesh.material)?.material;
 
@@ -702,7 +703,6 @@ function createZipperTeeth(jointMeshes){
             new BABYLON.Color3(0.65,0.68,0.72);
     }
 
-    // Create alternating teeth.
     for(let i=0;i<toothCount;i++){
 
         const isLeft = i%2===0;
@@ -717,82 +717,33 @@ function createZipperTeeth(jointMeshes){
             scene
         );
 
-        // Each tooth follows its bridge half.
+        // Attach teeth to the moving bridge halves.
         tooth.parent = isLeft
             ? leftBridgeRoot
             : rightBridgeRoot;
 
-        // Left teeth point toward the right.
-        // Right teeth point toward the left.
-        tooth.position.x = isLeft
-            ? toothLength*0.3
-            : -toothLength*0.3;
+        // Include the actual center X position.
+        tooth.position.x = center.x + (
+            isLeft
+                ? toothLength*0.3
+                : -toothLength*0.3
+        );
 
         tooth.position.y = center.y;
 
-        // Alternate positions across the joint width.
+        // Distribute teeth evenly across the joint width.
         tooth.position.z =
             center.z-jointWidth/2+
             (i+0.5)*pitch;
 
         tooth.material = toothMaterial;
-
         tooth.isPickable = false;
     }
 
     console.log("Interlocking zipper teeth created:",toothCount);
 }
-    // Position at the center of the joint model.
 
-    const centerY =
-        ((jointBounds.minY+jointBounds.maxY)/2)*modelScale;
 
-    const toothCount = 8;
-
-    for(let i=0;i<toothCount;i++){
-
-        const z =
-            -jointWidth/2+
-            (i+0.5)*(jointWidth/toothCount);
-
-        // Alternate left and right teeth.
-
-        const isLeft = i%2===0;
-
-        const tooth = BABYLON.MeshBuilder.CreateBox(
-            "zipperTooth_"+i,
-            {
-                width:toothLength,
-                height:toothHeight,
-                depth:toothWidth*0.8
-            },
-            scene
-        );
-
-        // Attach each tooth to its moving bridge half.
-
-        tooth.parent = isLeft
-            ? leftBridgeRoot
-            : rightBridgeRoot;
-
-        // Offset the teeth so they interlock.
-
-        tooth.position.x = isLeft
-            ? -toothLength*0.25
-            : toothLength*0.25;
-
-        tooth.position.y = centerY;
-
-        tooth.position.z = z;
-
-        tooth.material = toothMaterial;
-
-        tooth.isPickable = false;
-    }
-
-    console.log("Zipper teeth created:",toothCount);
-}
-    
 // ========================================
 // LOAD MODELS
 // ========================================
@@ -811,7 +762,6 @@ try{
     const width = bounds.maxX-bounds.minX;
 
     if(!Number.isFinite(width) || width<=0){
-
         throw new Error("Invalid bridge dimensions.");
     }
 
@@ -833,7 +783,6 @@ try{
 
     bridgeRoot.computeWorldMatrix(true);
 
-
     status.textContent = "Separating bridge halves...";
 
     splitBridgeGeometry(bridgeMeshes);
@@ -850,22 +799,17 @@ try{
         jointRoot
     );
 
-    // Measure the original joint model before moving it.
     const jointBounds = calculateBounds(jointMeshes);
 
-    // Apply the same scale as the bridge.
     jointRoot.scaling.set(
         modelScale,
         modelScale,
         modelScale
     );
 
-    // Keep the existing X and Y alignment.
     jointRoot.position.x = bridgeRoot.position.x;
     jointRoot.position.y = bridgeRoot.position.y;
 
-    // ALIGN JOINT DEPTH WITH BRIDGE DEPTH.
-    // This corrects the front/back offset automatically.
     const depthCorrection =
         (bounds.centerZ-jointBounds.centerZ)*modelScale;
 
@@ -880,10 +824,12 @@ try{
 
     status.textContent = "Connecting expansion joints...";
 
-// Create zipper teeth before disposing of the imported meshes.
-createZipperTeeth(jointMeshes);
+    // Create the teeth while the original joint meshes still exist.
+    createZipperTeeth(jointMeshes);
 
-splitJointGeometry(jointMeshes);
+    // Separate the original joint into moving halves.
+    splitJointGeometry(jointMeshes);
+
     // Dispose of the empty container without disposing materials.
     jointRoot.dispose(false,false);
 
@@ -908,23 +854,15 @@ splitJointGeometry(jointMeshes);
 function updateSimulation(){
 
     const temperature = Number(temperatureSlider.value);
-
     const mechanical = Number(mechanicalSlider.value);
-
     const alpha = Number(materialSelect.value);
 
     const deltaT = temperature-REFERENCE_TEMP;
 
-    // Thermal expansion equation:
-    // ΔL = α × L₀ × ΔT
-
     const deltaL = alpha*BRIDGE_LENGTH*deltaT;
-
     const deltaLmm = deltaL*1000;
 
     const totalGapChangeMm = deltaLmm+mechanical;
-
-    // Calculate movement of each bridge half.
 
     const movementPerSide =
         (totalGapChangeMm/1000/BRIDGE_LENGTH) *
@@ -933,17 +871,11 @@ function updateSimulation(){
 
     if(modelsReady){
 
-        // Heating: move halves away from each other.
-        // Cooling: move halves toward each other.
-
         leftBridgeRoot.position.x = -movementPerSide;
-
         rightBridgeRoot.position.x = movementPerSide;
     }
 
-    // ========================================
-    // UPDATE DISPLAY
-    // ========================================
+    // Display values.
 
     document.getElementById("temperatureValue").textContent =
         temperature+" °C";
@@ -976,9 +908,7 @@ function updateSimulation(){
 // ========================================
 
 temperatureSlider.addEventListener("input",updateSimulation);
-
 mechanicalSlider.addEventListener("input",updateSimulation);
-
 materialSelect.addEventListener("change",updateSimulation);
 
 
@@ -989,13 +919,10 @@ materialSelect.addEventListener("change",updateSimulation);
 document.getElementById("resetButton").addEventListener("click",function(){
 
     temperatureSlider.value = 20;
-
     mechanicalSlider.value = 0;
-
     materialSelect.value = "0.000012";
 
     updateSimulation();
-
 });
 
 
@@ -1006,15 +933,11 @@ document.getElementById("resetButton").addEventListener("click",function(){
 updateSimulation();
 
 engine.runRenderLoop(function(){
-
     scene.render();
-
 });
 
 window.addEventListener("resize",function(){
-
     engine.resize();
-
 });
 
 })();

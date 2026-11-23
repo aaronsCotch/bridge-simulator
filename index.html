@@ -27,6 +27,7 @@ button{width:100%;margin-top:15px;background:#2585e8;color:white;font-weight:bol
 .data p{margin:9px 0}
 .small{font-size:12px;color:#aabbd0;line-height:1.6}
 .status{color:#65d6a0;font-size:13px;overflow-wrap:anywhere}
+
 @media(max-width:850px){
 .container{grid-template-columns:1fr}
 #renderCanvas{height:400px}
@@ -306,6 +307,50 @@ async function importCombinedModel(filename,parent){
 
 
 // ========================================
+// CREATE SPLIT MESH
+// ========================================
+
+function createSplitMesh(name,positions,uvs,parent,material){
+
+    if(positions.length===0){
+        return;
+    }
+
+    const mesh = new BABYLON.Mesh(name,scene);
+
+    const indices = [];
+
+    for(let i=0;i<positions.length/3;i++){
+        indices.push(i);
+    }
+
+    const normals = [];
+
+    BABYLON.VertexData.ComputeNormals(
+        positions,
+        indices,
+        normals
+    );
+
+    const vertexData = new BABYLON.VertexData();
+
+    vertexData.positions = positions;
+    vertexData.indices = indices;
+    vertexData.normals = normals;
+    vertexData.uvs = uvs;
+
+    vertexData.applyToMesh(mesh,true);
+
+    // Preserve the original GLB material.
+    mesh.material = material;
+
+    mesh.parent = parent;
+
+    return mesh;
+}
+
+
+// ========================================
 // SPLIT BRIDGE GEOMETRY
 // ========================================
 
@@ -342,8 +387,6 @@ function splitBridgeGeometry(meshes){
 
         const transformed = [];
 
-        // Convert every vertex into bridgeRoot coordinates.
-
         for(let i=0;i<sourcePositions.length;i+=3){
 
             const local = new BABYLON.Vector3(
@@ -369,15 +412,11 @@ function splitBridgeGeometry(meshes){
             );
         }
 
-
         const leftPositions = [];
         const leftUVs = [];
 
         const rightPositions = [];
         const rightUVs = [];
-
-
-        // Assign complete triangles to the left or right half.
 
         for(let i=0;i<sourceIndices.length;i+=3){
 
@@ -397,9 +436,7 @@ function splitBridgeGeometry(meshes){
             const targetUVs =
                 centerX < 0 ? leftUVs : rightUVs;
 
-            const vertices = [a,b,c];
-
-            for(const index of vertices){
+            for(const index of [a,b,c]){
 
                 targetPositions.push(
                     transformed[index*3],
@@ -428,9 +465,6 @@ function splitBridgeGeometry(meshes){
             }
         }
 
-
-        // Create new left and right geometry.
-
         createSplitMesh(
             "leftBridgePart",
             leftPositions,
@@ -447,9 +481,9 @@ function splitBridgeGeometry(meshes){
             source.material
         );
 
-        source.dispose(false,true);
+        // Do not dispose the original materials or textures.
+        source.dispose(false,false);
     }
-
 
     if(leftTriangles===0 || rightTriangles===0){
 
@@ -458,46 +492,15 @@ function splitBridgeGeometry(meshes){
         );
     }
 
-    console.log("Left triangles:",leftTriangles);
-    console.log("Right triangles:",rightTriangles);
+    console.log("Left bridge triangles:",leftTriangles);
+    console.log("Right bridge triangles:",rightTriangles);
 }
 
 
-function createSplitMesh(name,positions,uvs,parent,material){
+// ========================================
+// SPLIT JOINT GEOMETRY
+// ========================================
 
-    if(positions.length===0){
-        return;
-    }
-
-    const mesh = new BABYLON.Mesh(name,scene);
-
-    const indices = [];
-
-    for(let i=0;i<positions.length/3;i++){
-        indices.push(i);
-    }
-
-    const normals = [];
-
-    BABYLON.VertexData.ComputeNormals(
-        positions,
-        indices,
-        normals
-    );
-
-    const vertexData = new BABYLON.VertexData();
-
-    vertexData.positions = positions;
-    vertexData.indices = indices;
-    vertexData.normals = normals;
-    vertexData.uvs = uvs;
-
-    vertexData.applyToMesh(mesh,true);
-
-    mesh.material = material;
-
-    mesh.parent = parent;
-}
 function splitJointGeometry(meshes){
 
     bridgeRoot.computeWorldMatrix(true);
@@ -515,6 +518,7 @@ function splitJointGeometry(meshes){
         );
 
         const indices = source.getIndices();
+
         const uvs = source.getVerticesData(
             BABYLON.VertexBuffer.UVKind
         );
@@ -550,6 +554,7 @@ function splitJointGeometry(meshes){
 
         const leftPositions = [];
         const rightPositions = [];
+
         const leftUVs = [];
         const rightUVs = [];
 
@@ -582,17 +587,24 @@ function splitJointGeometry(meshes){
                 );
 
                 if(uvs){
+
                     targetUVs.push(
                         uvs[index*2],
                         uvs[index*2+1]
                     );
+
                 }else{
+
                     targetUVs.push(0,0);
+
                 }
             }
 
-            if(isLeft) leftTriangles++;
-            else rightTriangles++;
+            if(isLeft){
+                leftTriangles++;
+            }else{
+                rightTriangles++;
+            }
         }
 
         createSplitMesh(
@@ -611,15 +623,21 @@ function splitJointGeometry(meshes){
             source.material
         );
 
-        source.dispose(false,true);
+        // Preserve original joint materials and textures.
+        source.dispose(false,false);
     }
 
     if(leftTriangles===0 || rightTriangles===0){
+
         throw new Error(
             "The two expansion joints could not be separated."
         );
     }
+
+    console.log("Left joint triangles:",leftTriangles);
+    console.log("Right joint triangles:",rightTriangles);
 }
+
 
 // ========================================
 // LOAD MODELS
@@ -673,36 +691,47 @@ try{
 
     status.textContent = "Loading expansion joints...";
 
-const jointMeshes = await importCombinedModel(
-    JOINT_FILE,
-    jointRoot
-);
+    const jointMeshes = await importCombinedModel(
+        JOINT_FILE,
+        jointRoot
+    );
 
-jointRoot.scaling.set(
-    modelScale,
-    modelScale,
-    modelScale
-);
+    // Measure the original joint model before moving it.
+    const jointBounds = calculateBounds(jointMeshes);
 
-jointRoot.position.x = bridgeRoot.position.x;
-jointRoot.position.y = bridgeRoot.position.y;
-jointRoot.position.z = bridgeRoot.position.z;
+    // Apply the same scale as the bridge.
+    jointRoot.scaling.set(
+        modelScale,
+        modelScale,
+        modelScale
+    );
 
-jointRoot.computeWorldMatrix(true);
+    // Keep the existing X and Y alignment.
+    jointRoot.position.x = bridgeRoot.position.x;
+    jointRoot.position.y = bridgeRoot.position.y;
 
-status.textContent = "Connecting expansion joints...";
+    // ALIGN JOINT DEPTH WITH BRIDGE DEPTH.
+    // This corrects the front/back offset automatically.
+    const depthCorrection =
+        (bounds.centerZ-jointBounds.centerZ)*modelScale;
 
-splitJointGeometry(jointMeshes);
+    jointRoot.position.z =
+        bridgeRoot.position.z+depthCorrection;
 
-jointRoot.dispose(false,true);
+    jointRoot.computeWorldMatrix(true);
 
-modelsReady = true;
+    console.log("Bridge center Z:",bounds.centerZ);
+    console.log("Joint center Z:",jointBounds.centerZ);
+    console.log("Joint depth correction:",depthCorrection);
 
-status.textContent =
-    "Bridge halves and moving expansion joints loaded successfully.";
+    status.textContent = "Connecting expansion joints...";
 
+    splitJointGeometry(jointMeshes);
 
-    
+    // Dispose of the empty container without disposing materials.
+    jointRoot.dispose(false,false);
+
+    modelsReady = true;
 
     status.textContent =
         "Bridge halves and expansion joints loaded successfully.";
@@ -730,7 +759,6 @@ function updateSimulation(){
 
     const deltaT = temperature-REFERENCE_TEMP;
 
-
     // Thermal expansion equation:
     // ΔL = α × L₀ × ΔT
 
@@ -740,14 +768,12 @@ function updateSimulation(){
 
     const totalGapChangeMm = deltaLmm+mechanical;
 
-
     // Calculate movement of each bridge half.
 
     const movementPerSide =
         (totalGapChangeMm/1000/BRIDGE_LENGTH) *
         MODEL_WIDTH *
         VISUAL_AMPLIFICATION / 2;
-
 
     if(modelsReady){
 
@@ -758,7 +784,6 @@ function updateSimulation(){
 
         rightBridgeRoot.position.x = movementPerSide;
     }
-
 
     // ========================================
     // UPDATE DISPLAY

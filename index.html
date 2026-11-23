@@ -416,7 +416,9 @@ function getMeshBounds(meshes) {
 
 async function loadBridge() {
 
-    status.textContent = "Loading left bridge...";
+// ========================================
+// LOAD ONE JOINT MODEL
+// ========================================
 
     const leftResult = await BABYLON.SceneLoader.ImportMeshAsync(
         null,

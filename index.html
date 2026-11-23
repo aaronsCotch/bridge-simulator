@@ -168,11 +168,35 @@ const groundMat = new BABYLON.StandardMaterial("groundMat",scene);
 groundMat.diffuseColor = new BABYLON.Color3(0.16,0.25,0.23);
 ground.material = groundMat;
 
+
+// ========================================
+// BRIDGE GROUPS
+// ========================================
+
 const bridgeRoot = new BABYLON.TransformNode("bridgeRoot",scene);
+
+const leftBridgeRoot = new BABYLON.TransformNode(
+"leftBridgeRoot",
+scene
+);
+
+const rightBridgeRoot = new BABYLON.TransformNode(
+"rightBridgeRoot",
+scene
+);
+
+leftBridgeRoot.parent = bridgeRoot;
+rightBridgeRoot.parent = bridgeRoot;
+
 const jointRoot = new BABYLON.TransformNode("jointRoot",scene);
 
 let modelScale = 1;
 let modelsReady = false;
+
+
+// ========================================
+// MODEL FUNCTIONS
+// ========================================
 
 function reparentPreservingWorld(mesh,parent){
 
@@ -257,9 +281,14 @@ async function importCombinedModel(filename,parent){
     return meshes;
 }
 
+
+// ========================================
+// LOAD AND SEPARATE BRIDGE HALVES
+// ========================================
+
 try{
 
-    status.textContent = "Loading both bridge halves...";
+    status.textContent = "Loading bridge model...";
 
     const bridgeMeshes = await importCombinedModel(
         BRIDGE_FILE,
@@ -290,33 +319,64 @@ try{
 
     bridgeRoot.position.copyFrom(sharedPosition);
 
+
+    // Separate meshes according to their X positions.
+    // The X axis is the length of the bridge.
+
+    let leftCount = 0;
+    let rightCount = 0;
+
+    for(const mesh of bridgeMeshes){
+
+        mesh.computeWorldMatrix(true);
+
+        const centerX =
+            mesh.getBoundingInfo().boundingBox.centerWorld.x;
+
+        if(centerX < 0){
+
+            mesh.parent = leftBridgeRoot;
+            leftCount++;
+
+        }else{
+
+            mesh.parent = rightBridgeRoot;
+            rightCount++;
+
+        }
+    }
+
+    if(leftCount===0 || rightCount===0){
+
+        throw new Error(
+            "Could not separate the bridge into left and right groups."
+        );
+
+    }
+
     status.textContent =
-        "Bridge loaded. Loading both expansion joints...";
+        "Bridge separated. Loading expansion joints...";
+
+
+    // ========================================
+    // LOAD EXPANSION JOINTS
+    // ========================================
 
     await importCombinedModel(JOINT_FILE,jointRoot);
 
-    // Both combined GLB files use the same original coordinate space.
-    // Keep their scale and position identical.
-    // There is no extra Z offset.
-
     jointRoot.scaling.set(
-    modelScale,
-    modelScale,
-    modelScale
-);
-
-jointRoot.position.x = bridgeRoot.position.x;
-jointRoot.position.y = bridgeRoot.position.y;
-
-// Center the expansion joints along the bridge.
-jointRoot.position.z = -33 * modelScale;
+        modelScale,
+        modelScale,
+        modelScale
+    );
 
     jointRoot.position.copyFrom(sharedPosition);
+
 
     modelsReady = true;
 
     status.textContent =
-        "Both bridge halves and both expansion joints loaded.";
+        "Bridge halves and expansion joints loaded successfully.";
 
 }catch(error){
 
@@ -326,35 +386,66 @@ jointRoot.position.z = -33 * modelScale;
         "MODEL ERROR: "+(error && error.message ? error.message : String(error));
 }
 
+
+// ========================================
+// SIMULATION CONTROLS
+// ========================================
+
 function updateSimulation(){
 
     const temperature = Number(temperatureSlider.value);
+
     const mechanical = Number(mechanicalSlider.value);
+
     const alpha = Number(materialSelect.value);
 
     const deltaT = temperature-REFERENCE_TEMP;
+
 
     // Thermal expansion equation:
     // ΔL = α × L₀ × ΔT
 
     const deltaL = alpha*BRIDGE_LENGTH*deltaT;
+
     const deltaLmm = deltaL*1000;
+
+
+    // Total change includes thermal and mechanical adjustment.
 
     const totalGapChangeMm = deltaLmm+mechanical;
 
-    // Amplify the movement for demonstration.
-    // Apply the same scale to the bridge and joints.
 
-    const scaleChange =
-        1+(totalGapChangeMm/1000/BRIDGE_LENGTH)*VISUAL_AMPLIFICATION;
+    // Convert the total gap change into visual movement.
+    // Each bridge half moves by half of the total change.
 
-    const safeScale = Math.max(0.85,Math.min(1.15,scaleChange));
+    const movementPerSide =
+        (totalGapChangeMm/1000/2) *
+        (MODEL_WIDTH/BRIDGE_LENGTH) *
+        VISUAL_AMPLIFICATION;
+
 
     if(modelsReady){
 
-        bridgeRoot.scaling.x = modelScale*safeScale;
-        jointRoot.scaling.x = modelScale*safeScale;
+        // HEATING:
+        // Left half moves left.
+        // Right half moves right.
+
+        // COOLING:
+        // Left half moves right.
+        // Right half moves left.
+
+        leftBridgeRoot.position.x = -movementPerSide;
+
+        rightBridgeRoot.position.x = movementPerSide;
+
+        // Keep the expansion joints in their original position.
+        // Do not scale the entire bridge or joint model.
     }
+
+
+    // ========================================
+    // UPDATE DISPLAYED VALUES
+    // ========================================
 
     document.getElementById("temperatureValue").textContent =
         temperature+" °C";
@@ -381,27 +472,51 @@ function updateSimulation(){
         totalGapChangeMm.toFixed(3)+" mm";
 }
 
+
+// ========================================
+// EVENT LISTENERS
+// ========================================
+
 temperatureSlider.addEventListener("input",updateSimulation);
+
 mechanicalSlider.addEventListener("input",updateSimulation);
+
 materialSelect.addEventListener("change",updateSimulation);
+
+
+// ========================================
+// RESET BUTTON
+// ========================================
 
 document.getElementById("resetButton").addEventListener("click",function(){
 
     temperatureSlider.value = 20;
+
     mechanicalSlider.value = 0;
+
     materialSelect.value = "0.000012";
 
     updateSimulation();
+
 });
+
+
+// ========================================
+// RENDER LOOP
+// ========================================
 
 updateSimulation();
 
 engine.runRenderLoop(function(){
+
     scene.render();
+
 });
 
 window.addEventListener("resize",function(){
+
     engine.resize();
+
 });
 
 })();

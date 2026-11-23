@@ -3,127 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Suspension Bridge Expansion Simulator</title>
 
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
 <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #101827;
-    color: white;
-    font-family: Arial, sans-serif;
-}
-
-header {
-    text-align: center;
-    padding: 20px;
-    background: #17243a;
-}
-
-header h1 {
-    margin: 0;
-    font-size: 25px;
-}
-
-header p {
-    color: #aabbd0;
-}
-
-.container {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 15px;
-    padding: 15px;
-}
-
-#renderCanvas {
-    width: 100%;
-    height: 600px;
-    display: block;
-    border-radius: 12px;
-    background: #26374d;
-    touch-action: none;
-}
-
-.controls {
-    background: #1c2a40;
-    padding: 20px;
-    border-radius: 12px;
-}
-
-label {
-    display: block;
-    margin-top: 20px;
-    margin-bottom: 8px;
-}
-
-input, select {
-    width: 100%;
-}
-
-input[type="range"] {
-    cursor: pointer;
-}
-
-select, button {
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    font-size: 15px;
-}
-
-select {
-    background: #31445e;
-    color: white;
-}
-
-button {
-    width: 100%;
-    margin-top: 15px;
-    background: #2585e8;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.data {
-    background: #26374d;
-    padding: 12px;
-    border-radius: 8px;
-    margin-top: 15px;
-}
-
-.data p {
-    margin: 9px 0;
-}
-
-.small {
-    font-size: 12px;
-    color: #aabbd0;
-    line-height: 1.6;
-}
-
-.status {
-    color: #65d6a0;
-    font-size: 13px;
-    overflow-wrap: anywhere;
-}
-
-@media(max-width: 850px) {
-    .container {
-        grid-template-columns: 1fr;
-    }
-
-    #renderCanvas {
-        height: 400px;
-    }
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif}
+header{text-align:center;padding:20px;background:#17243a}
+header h1{margin:0;font-size:25px}
+header p{color:#aabbd0}
+.container{display:grid;grid-template-columns:1fr 320px;gap:15px;padding:15px}
+#renderCanvas{width:100%;height:600px;display:block;border-radius:12px;background:#26374d;touch-action:none}
+.controls{background:#1c2a40;padding:20px;border-radius:12px}
+label{display:block;margin-top:20px;margin-bottom:8px}
+input,select{width:100%}
+input[type=range]{cursor:pointer}
+select,button{padding:12px;border:0;border-radius:6px;font-size:15px}
+select{background:#31445e;color:white}
+button{width:100%;margin-top:15px;background:#2585e8;color:white;font-weight:bold;cursor:pointer}
+.data{background:#26374d;padding:12px;border-radius:8px;margin-top:15px}
+.data p{margin:9px 0}
+.small{font-size:12px;color:#aabbd0;line-height:1.6}
+.status{color:#65d6a0;font-size:13px;overflow-wrap:anywhere}
+@media(max-width:850px){
+.container{grid-template-columns:1fr}
+#renderCanvas{height:400px}
 }
 </style>
 </head>
@@ -131,220 +37,144 @@ button {
 <body>
 
 <header>
-    <h1>Suspension Bridge Expansion Simulation</h1>
-    <p>Physics 2 | Thermal Expansion and Contraction</p>
+<h1>Suspension Bridge Expansion Simulation</h1>
+<p>Physics 2 | Thermal Expansion and Contraction</p>
 </header>
 
 <div class="container">
 
-    <canvas id="renderCanvas"></canvas>
+<canvas id="renderCanvas"></canvas>
 
-    <div class="controls">
+<div class="controls">
 
-        <h2>Simulation Controls</h2>
+<h2>Simulation Controls</h2>
 
-        <label>Temperature</label>
-        <input type="range" id="temperature"
-               min="-20" max="60" value="20">
+<label for="temperature">Temperature</label>
+<input type="range" id="temperature" min="-20" max="60" value="20">
+<h3 id="temperatureValue">20 °C</h3>
 
-        <h3 id="temperatureValue">20 °C</h3>
+<label for="mechanical">Mechanical Adjustment</label>
+<input type="range" id="mechanical" min="-100" max="100" value="0">
+<h3 id="mechanicalValue">0 mm</h3>
 
-        <label>Mechanical Adjustment</label>
-        <input type="range" id="mechanical"
-               min="-100" max="100" value="0">
+<label for="material">Bridge Material</label>
+<select id="material">
+<option value="0.000012">Steel</option>
+<option value="0.000023">Aluminum</option>
+<option value="0.000010">Concrete</option>
+</select>
 
-        <h3 id="mechanicalValue">0 mm</h3>
+<div class="data">
 
-        <label>Bridge Material</label>
-        <select id="material">
-            <option value="0.000012">Steel</option>
-            <option value="0.000023">Aluminum</option>
-            <option value="0.000010">Concrete</option>
-        </select>
+<p>Thermal Expansion / Contraction</p>
+<h2 id="expansion">0.000 mm</h2>
 
-        <div class="data">
+<p>Temperature Change</p>
+<h3 id="temperatureChange">0 °C</h3>
 
-            <p>Thermal Expansion / Contraction</p>
-            <h2 id="expansion">0.000 mm</h2>
+<p>Joint Movement</p>
+<h3 id="jointMovement">0.000 mm per side</h3>
 
-            <p>Temperature Change</p>
-            <h3 id="temperatureChange">0 °C</h3>
+<p>Mechanical Adjustment</p>
+<h3 id="mechanicalResult">0 mm</h3>
 
-            <p>Joint Movement</p>
-            <h3 id="jointMovement">0.000 mm per side</h3>
+<p>Material Coefficient</p>
+<h3 id="coefficient">1.20e-5 /°C</h3>
 
-            <p>Mechanical Adjustment</p>
-            <h3 id="mechanicalResult">0 mm</h3>
+<p>Calculated Gap Change</p>
+<h3 id="gap">0.000 mm</h3>
 
-            <p>Material Coefficient</p>
-            <h3 id="coefficient">1.20e-5 /°C</h3>
-
-            <p>Calculated Gap Change</p>
-            <h3 id="gap">0.000 mm</h3>
-
-            <p id="status" class="status">
-                Preparing simulation...
-            </p>
-
-        </div>
-
-        <button id="resetButton">Reset Simulation</button>
-
-        <p class="small">
-            Reference temperature: 20°C<br>
-            Bridge length: 50 meters<br>
-            Formula: ΔL = α × L₀ × ΔT<br>
-            Visual movement is amplified for demonstration.
-        </p>
-
-    </div>
+<p id="status" class="status">Preparing simulation...</p>
 
 </div>
 
-<script>
+<button id="resetButton">Reset Simulation</button>
 
-(async function() {
+<p class="small">
+Reference temperature: 20°C<br>
+Bridge length: 50 meters<br>
+Formula: ΔL = α × L₀ × ΔT<br>
+Visual movement is amplified for demonstration.
+</p>
+
+</div>
+</div>
+
+<script>
+(async function(){
 
 "use strict";
-
-// ========================================
-// CONFIGURATION
-// ========================================
 
 const BASE_URL =
 "https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
 
-const LEFT_BRIDGE_FILE = "Left bridge_2.glb";
-const RIGHT_BRIDGE_FILE = "right bridge.glb";
-
-const LEFT_JOINT_FILE = "left joint.glb";
-const RIGHT_JOINT_FILE = "right joint.glb";
+const BRIDGE_FILE = "2bridges.glb";
+const JOINT_FILE = "2joints.glb";
 
 const REFERENCE_TEMP = 20;
 const BRIDGE_LENGTH = 50;
 const MODEL_WIDTH = 80;
-
-// Amplifies small real-world movement so it can be seen.
-const VISUAL_AMPLIFICATION = 100;
+const VISUAL_AMPLIFICATION = 30;
 
 const canvas = document.getElementById("renderCanvas");
 const status = document.getElementById("status");
 
-let modelScale = 1;
-let modelsReady = false;
+const temperatureSlider = document.getElementById("temperature");
+const mechanicalSlider = document.getElementById("mechanical");
+const materialSelect = document.getElementById("material");
 
-// ========================================
-// BABYLON ENGINE
-// ========================================
-
-const engine = new BABYLON.Engine(canvas, true);
+const engine = new BABYLON.Engine(canvas,true);
 const scene = new BABYLON.Scene(engine);
 
-scene.clearColor = new BABYLON.Color4(
-    0.06, 0.10, 0.16, 1
-);
-
-// ========================================
-// CAMERA
-// ========================================
+scene.clearColor = new BABYLON.Color4(0.06,0.10,0.16,1);
 
 const camera = new BABYLON.ArcRotateCamera(
-    "camera",
-    -Math.PI / 2,
-    Math.PI / 3,
-    105,
-    new BABYLON.Vector3(0, 12, 0),
-    scene
+"camera",
+-Math.PI/2,
+Math.PI/3,
+105,
+new BABYLON.Vector3(0,12,0),
+scene
 );
 
-camera.attachControl(canvas, true);
+camera.attachControl(canvas,true);
 camera.lowerRadiusLimit = 25;
 camera.upperRadiusLimit = 180;
 
-// ========================================
-// LIGHTING
-// ========================================
-
-const light = new BABYLON.HemisphericLight(
-    "ambient",
-    new BABYLON.Vector3(0, 1, 0),
-    scene
+const ambient = new BABYLON.HemisphericLight(
+"ambient",
+new BABYLON.Vector3(0,1,0),
+scene
 );
 
-light.intensity = 1;
+ambient.intensity = 1;
 
 const directional = new BABYLON.DirectionalLight(
-    "directional",
-    new BABYLON.Vector3(-1, -2, 1),
-    scene
+"directional",
+new BABYLON.Vector3(-1,-2,1),
+scene
 );
 
-directional.position.set(30, 80, -30);
+directional.position.set(30,80,-30);
 directional.intensity = 0.8;
 
-// ========================================
-// GROUND
-// ========================================
-
 const ground = BABYLON.MeshBuilder.CreateGround(
-    "ground",
-    {
-        width: 160,
-        height: 100
-    },
-    scene
+"ground",
+{width:160,height:100},
+scene
 );
 
-const groundMat = new BABYLON.StandardMaterial(
-    "groundMat",
-    scene
-);
-
-groundMat.diffuseColor = new BABYLON.Color3(
-    0.16, 0.25, 0.23
-);
-
+const groundMat = new BABYLON.StandardMaterial("groundMat",scene);
+groundMat.diffuseColor = new BABYLON.Color3(0.16,0.25,0.23);
 ground.material = groundMat;
 
-// ========================================
-// MODEL GROUPS
-// ========================================
+const bridgeRoot = new BABYLON.TransformNode("bridgeRoot",scene);
+const jointRoot = new BABYLON.TransformNode("jointRoot",scene);
 
-const bridgeRoot = new BABYLON.TransformNode(
-    "bridgeRoot", scene
-);
+let modelScale = 1;
+let modelsReady = false;
 
-const jointRoot = new BABYLON.TransformNode(
-    "jointRoot", scene
-);
-
-const leftBridge = new BABYLON.TransformNode(
-    "leftBridge", scene
-);
-
-const rightBridge = new BABYLON.TransformNode(
-    "rightBridge", scene
-);
-
-const leftJoint = new BABYLON.TransformNode(
-    "leftJoint", scene
-);
-
-const rightJoint = new BABYLON.TransformNode(
-    "rightJoint", scene
-);
-
-leftBridge.parent = bridgeRoot;
-rightBridge.parent = bridgeRoot;
-
-leftJoint.parent = jointRoot;
-rightJoint.parent = jointRoot;
-
-// ========================================
-// PRESERVE MESH POSITION
-// ========================================
-
-function moveMeshPreservingWorld(mesh, parent) {
+function reparentPreservingWorld(mesh,parent){
 
     mesh.computeWorldMatrix(true);
 
@@ -354,42 +184,44 @@ function moveMeshPreservingWorld(mesh, parent) {
     const rotation = BABYLON.Quaternion.Identity();
     const position = BABYLON.Vector3.Zero();
 
-    world.decompose(scaling, rotation, position);
+    world.decompose(scaling,rotation,position);
 
     mesh.parent = parent;
-
     mesh.position.copyFrom(position);
     mesh.scaling.copyFrom(scaling);
     mesh.rotationQuaternion = rotation;
 }
 
-// ========================================
-// GET MODEL BOUNDS
-// ========================================
+function visibleMeshes(result){
 
-function getMeshBounds(meshes) {
+    return result.meshes.filter(mesh =>
+        mesh &&
+        mesh.getTotalVertices &&
+        mesh.getTotalVertices() > 0
+    );
+}
+
+function calculateBounds(meshes){
 
     let minX = Infinity;
     let maxX = -Infinity;
-
     let minY = Infinity;
-
     let minZ = Infinity;
     let maxZ = -Infinity;
 
-    for (const mesh of meshes) {
+    for(const mesh of meshes){
 
         mesh.computeWorldMatrix(true);
 
         const box = mesh.getBoundingInfo().boundingBox;
 
-        minX = Math.min(minX, box.minimumWorld.x);
-        maxX = Math.max(maxX, box.maximumWorld.x);
+        minX = Math.min(minX,box.minimumWorld.x);
+        maxX = Math.max(maxX,box.maximumWorld.x);
 
-        minY = Math.min(minY, box.minimumWorld.y);
+        minY = Math.min(minY,box.minimumWorld.y);
 
-        minZ = Math.min(minZ, box.minimumWorld.z);
-        maxZ = Math.max(maxZ, box.maximumWorld.z);
+        minZ = Math.min(minZ,box.minimumWorld.z);
+        maxZ = Math.max(maxZ,box.maximumWorld.z);
     }
 
     return {
@@ -398,75 +230,57 @@ function getMeshBounds(meshes) {
         minY,
         minZ,
         maxZ,
-        centerX: (minX + maxX) / 2,
-        centerZ: (minZ + maxZ) / 2
+        centerX:(minX+maxX)/2,
+        centerZ:(minZ+maxZ)/2
     };
 }
 
-// ========================================
-// LOAD LEFT AND RIGHT BRIDGES
-// ========================================
+async function importCombinedModel(filename,parent){
 
-async function loadBridge() {
-
-    status.textContent = "Loading left bridge...";
-
-    const leftResult =
-        await BABYLON.SceneLoader.ImportMeshAsync(
-            null,
-            BASE_URL,
-            LEFT_BRIDGE_FILE,
-            scene
-        );
-
-    const leftMeshes = leftResult.meshes.filter(mesh =>
-        mesh.getTotalVertices() > 0
+    const result = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        filename,
+        scene
     );
 
-    if (!leftMeshes.length) {
-        throw new Error("Left bridge model has no visible mesh.");
+    const meshes = visibleMeshes(result);
+
+    if(!meshes.length){
+        throw new Error(filename+" did not contain a visible 3D mesh.");
     }
 
-    status.textContent = "Loading right bridge...";
+    for(const mesh of meshes){
+        reparentPreservingWorld(mesh,parent);
+    }
 
-    const rightResult =
-        await BABYLON.SceneLoader.ImportMeshAsync(
-            null,
-            BASE_URL,
-            RIGHT_BRIDGE_FILE,
-            scene
-        );
+    return meshes;
+}
 
-    const rightMeshes = rightResult.meshes.filter(mesh =>
-        mesh.getTotalVertices() > 0
+try{
+
+    status.textContent = "Loading both bridge halves...";
+
+    const bridgeMeshes = await importCombinedModel(
+        BRIDGE_FILE,
+        bridgeRoot
     );
 
-    if (!rightMeshes.length) {
-        throw new Error("Right bridge model has no visible mesh.");
+    const bounds = calculateBounds(bridgeMeshes);
+
+    const width = bounds.maxX-bounds.minX;
+
+    if(!Number.isFinite(width) || width<=0){
+        throw new Error("The bridge model has invalid dimensions.");
     }
 
-    const allMeshes = [
-        ...leftMeshes,
-        ...rightMeshes
-    ];
+    modelScale = MODEL_WIDTH/width;
 
-    const bounds = getMeshBounds(allMeshes);
-
-    const width = bounds.maxX - bounds.minX;
-
-    if (width <= 0) {
-        throw new Error("Invalid bridge dimensions.");
-    }
-
-    modelScale = MODEL_WIDTH / width;
-
-    for (const mesh of leftMeshes) {
-        moveMeshPreservingWorld(mesh, leftBridge);
-    }
-
-    for (const mesh of rightMeshes) {
-        moveMeshPreservingWorld(mesh, rightBridge);
-    }
+    const sharedPosition = new BABYLON.Vector3(
+        -bounds.centerX*modelScale,
+        -bounds.minY*modelScale,
+        -bounds.centerZ*modelScale
+    );
 
     bridgeRoot.scaling.set(
         modelScale,
@@ -474,248 +288,113 @@ async function loadBridge() {
         modelScale
     );
 
-    bridgeRoot.position.x =
-        -bounds.centerX * modelScale;
-
-    bridgeRoot.position.y =
-        -bounds.minY * modelScale;
-
-    bridgeRoot.position.z =
-        -bounds.centerZ * modelScale;
+    bridgeRoot.position.copyFrom(sharedPosition);
 
     status.textContent =
-        "Bridge sections loaded. Loading expansion joints...";
-}
+        "Bridge loaded. Loading both expansion joints...";
 
-// ========================================
-// LOAD ONE EXPANSION JOINT
-// ========================================
+    await importCombinedModel(JOINT_FILE,jointRoot);
 
-async function loadSingleJoint(filename, group) {
+    // Both combined GLB files use the same original coordinate space.
+    // Keep their scale and position identical.
+    // There is no extra Z offset.
 
-    const result =
-        await BABYLON.SceneLoader.ImportMeshAsync(
-            null,
-            BASE_URL,
-            filename,
-            scene
-        );
-
-    const meshes = result.meshes.filter(mesh =>
-        mesh.getTotalVertices() > 0
+    jointRoot.scaling.set(
+        modelScale,
+        modelScale,
+        modelScale
     );
 
-    if (!meshes.length) {
-        throw new Error("No visible mesh found in " + filename);
-    }
-
-    for (const mesh of meshes) {
-        moveMeshPreservingWorld(mesh, group);
-    }
-}
-
-// ========================================
-// LOAD BOTH EXPANSION JOINTS
-// ========================================
-
-async function loadJoints() {
-
-    status.textContent = "Loading left expansion joint...";
-
-    await loadSingleJoint(
-        LEFT_JOINT_FILE,
-        leftJoint
-    );
-
-    status.textContent = "Loading right expansion joint...";
-
-    await loadSingleJoint(
-        RIGHT_JOINT_FILE,
-        rightJoint
-    );
-
-    jointRoot.scaling.copyFrom(bridgeRoot.scaling);
-
-    jointRoot.position.x = bridgeRoot.position.x;
-    jointRoot.position.y = bridgeRoot.position.y;
-
-    // The joint models have a center Z coordinate of 33.
-    jointRoot.position.z = -33 * modelScale;
-}
-
-// ========================================
-// LOAD ALL MODELS
-// ========================================
-
-try {
-
-    await loadBridge();
-
-    await loadJoints();
+    jointRoot.position.copyFrom(sharedPosition);
 
     modelsReady = true;
 
     status.textContent =
-        "Bridge and expansion joints loaded successfully!";
+        "Both bridge halves and both expansion joints loaded.";
 
-} catch(error) {
+}catch(error){
 
-    console.error("3D MODEL ERROR:", error);
+    console.error("3D MODEL ERROR:",error);
 
     status.textContent =
-        "MODEL ERROR: " + error.message;
+        "MODEL ERROR: "+(error && error.message ? error.message : String(error));
 }
 
-// ========================================
-// SIMULATION CONTROLS
-// ========================================
+function updateSimulation(){
 
-const temperatureSlider =
-    document.getElementById("temperature");
+    const temperature = Number(temperatureSlider.value);
+    const mechanical = Number(mechanicalSlider.value);
+    const alpha = Number(materialSelect.value);
 
-const mechanicalSlider =
-    document.getElementById("mechanical");
-
-const materialSelect =
-    document.getElementById("material");
-
-// ========================================
-// SIMULATION CALCULATIONS
-// ========================================
-
-function updateSimulation() {
-
-    const temperature =
-        Number(temperatureSlider.value);
-
-    const mechanical =
-        Number(mechanicalSlider.value);
-
-    const alpha =
-        Number(materialSelect.value);
-
-    const deltaT =
-        temperature - REFERENCE_TEMP;
+    const deltaT = temperature-REFERENCE_TEMP;
 
     // Thermal expansion equation:
     // ΔL = α × L₀ × ΔT
 
-    const deltaL =
-        alpha * BRIDGE_LENGTH * deltaT;
+    const deltaL = alpha*BRIDGE_LENGTH*deltaT;
+    const deltaLmm = deltaL*1000;
 
-    const deltaLmm = deltaL * 1000;
+    const totalGapChangeMm = deltaLmm+mechanical;
 
-    // Each bridge section moves half the total change.
-    const thermalMovement = deltaL / 2;
+    // Amplify the movement for demonstration.
+    // Apply the same scale to the bridge and joints.
 
-    // Convert mechanical adjustment from mm to meters.
-    const mechanicalMovement = mechanical / 1000;
+    const scaleChange =
+        1+(totalGapChangeMm/1000/BRIDGE_LENGTH)*VISUAL_AMPLIFICATION;
 
-    // Total movement of each bridge section.
-    const netMovement =
-        thermalMovement + mechanicalMovement / 2;
+    const safeScale = Math.max(0.85,Math.min(1.15,scaleChange));
 
-    // Convert physical movement to visual movement.
-    const modelUnitsPerMeter =
-        MODEL_WIDTH / BRIDGE_LENGTH;
+    if(modelsReady){
 
-    const visualMovement =
-        netMovement *
-        modelUnitsPerMeter *
-        VISUAL_AMPLIFICATION;
-
-    if (modelsReady) {
-
-        leftBridge.position.x = -visualMovement;
-        rightBridge.position.x = visualMovement;
-
-        leftJoint.position.x = -visualMovement;
-        rightJoint.position.x = visualMovement;
+        bridgeRoot.scaling.x = modelScale*safeScale;
+        jointRoot.scaling.x = modelScale*safeScale;
     }
-
-    // ====================================
-    // UPDATE DISPLAYS
-    // ====================================
 
     document.getElementById("temperatureValue").textContent =
-        temperature + " °C";
+        temperature+" °C";
 
     document.getElementById("mechanicalValue").textContent =
-        mechanical + " mm";
+        mechanical+" mm";
 
     document.getElementById("expansion").textContent =
-        deltaLmm.toFixed(3) + " mm";
+        deltaLmm.toFixed(3)+" mm";
 
     document.getElementById("temperatureChange").textContent =
-        (deltaT > 0 ? "+" : "") + deltaT + " °C";
+        (deltaT>0?"+":"")+deltaT+" °C";
 
     document.getElementById("jointMovement").textContent =
-        (thermalMovement * 1000).toFixed(3) + " mm per side";
+        (deltaLmm/2).toFixed(3)+" mm per side";
 
     document.getElementById("mechanicalResult").textContent =
-        mechanical + " mm";
+        mechanical+" mm";
 
     document.getElementById("coefficient").textContent =
-        alpha.toExponential(2) + " /°C";
+        alpha.toExponential(2)+" /°C";
 
     document.getElementById("gap").textContent =
-        (deltaLmm + mechanical).toFixed(3) + " mm";
+        totalGapChangeMm.toFixed(3)+" mm";
 }
 
-// ========================================
-// EVENT LISTENERS
-// ========================================
+temperatureSlider.addEventListener("input",updateSimulation);
+mechanicalSlider.addEventListener("input",updateSimulation);
+materialSelect.addEventListener("change",updateSimulation);
 
-temperatureSlider.addEventListener(
-    "input",
-    updateSimulation
-);
+document.getElementById("resetButton").addEventListener("click",function(){
 
-mechanicalSlider.addEventListener(
-    "input",
-    updateSimulation
-);
+    temperatureSlider.value = 20;
+    mechanicalSlider.value = 0;
+    materialSelect.value = "0.000012";
 
-materialSelect.addEventListener(
-    "change",
-    updateSimulation
-);
-
-// ========================================
-// RESET SIMULATION
-// ========================================
-
-document.getElementById("resetButton").addEventListener(
-    "click",
-    function() {
-
-        temperatureSlider.value = 20;
-        mechanicalSlider.value = 0;
-        materialSelect.value = "0.000012";
-
-        updateSimulation();
-    }
-);
-
-// ========================================
-// INITIAL UPDATE
-// ========================================
+    updateSimulation();
+});
 
 updateSimulation();
 
-// ========================================
-// RENDER LOOP
-// ========================================
-
-engine.runRenderLoop(function() {
+engine.runRenderLoop(function(){
     scene.render();
 });
 
-// ========================================
-// RESIZE
-// ========================================
-
-window.addEventListener("resize", function() {
+window.addEventListener("resize",function(){
     engine.resize();
 });
 

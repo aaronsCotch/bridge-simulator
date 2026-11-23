@@ -253,6 +253,7 @@ function calculateBounds(meshes){
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
+    let maxY = -Infinity;
     let minZ = Infinity;
     let maxZ = -Infinity;
 
@@ -266,7 +267,8 @@ function calculateBounds(meshes){
         maxX = Math.max(maxX,box.maximumWorld.x);
 
         minY = Math.min(minY,box.minimumWorld.y);
-
+        maxY = Math.max(maxY,box.maximumWorld.y);
+        
         minZ = Math.min(minZ,box.minimumWorld.z);
         maxZ = Math.max(maxZ,box.maximumWorld.z);
     }
@@ -275,6 +277,7 @@ function calculateBounds(meshes){
         minX,
         maxX,
         minY,
+        maxY,
         minZ,
         maxZ,
         centerX:(minX+maxX)/2,
@@ -638,7 +641,158 @@ function splitJointGeometry(meshes){
     console.log("Right joint triangles:",rightTriangles);
 }
 
+// ========================================
+// ZIPPER-STYLE EXPANSION JOINT TEETH
+// ========================================
 
+function createZipperTeeth(jointMeshes){
+
+    console.log("Creating interlocking zipper teeth...");
+
+    // Get the actual joint dimensions after positioning.
+    const bounds = calculateBounds(jointMeshes);
+
+    // Convert world coordinates into bridge-local coordinates.
+    const inverseRoot = bridgeRoot.getWorldMatrix().clone();
+    inverseRoot.invert();
+
+    const worldCenter = new BABYLON.Vector3(
+        (bounds.minX+bounds.maxX)/2,
+        (bounds.minY+bounds.maxY)/2,
+        (bounds.minZ+bounds.maxZ)/2
+    );
+
+    const center = BABYLON.Vector3.TransformCoordinates(
+        worldCenter,
+        inverseRoot
+    );
+
+    const jointWidth =
+        (bounds.maxZ-bounds.minZ)/modelScale;
+
+    const jointHeight =
+        (bounds.maxY-bounds.minY)/modelScale;
+
+    // Zipper dimensions.
+    const toothCount = 10;
+    const pitch = jointWidth/toothCount;
+
+    const toothLength = 1.2;
+    const toothDepth = pitch*0.65;
+
+    const toothHeight = Math.max(
+        0.2,
+        jointHeight*0.4
+    );
+
+    // Preserve original joint material.
+    const originalMaterial =
+        jointMeshes.find(mesh=>mesh.material)?.material;
+
+    let toothMaterial = originalMaterial;
+
+    if(!toothMaterial){
+
+        toothMaterial = new BABYLON.StandardMaterial(
+            "zipperToothMaterial",
+            scene
+        );
+
+        toothMaterial.diffuseColor =
+            new BABYLON.Color3(0.65,0.68,0.72);
+    }
+
+    // Create alternating teeth.
+    for(let i=0;i<toothCount;i++){
+
+        const isLeft = i%2===0;
+
+        const tooth = BABYLON.MeshBuilder.CreateBox(
+            "zipperTooth_"+i,
+            {
+                width:toothLength,
+                height:toothHeight,
+                depth:toothDepth
+            },
+            scene
+        );
+
+        // Each tooth follows its bridge half.
+        tooth.parent = isLeft
+            ? leftBridgeRoot
+            : rightBridgeRoot;
+
+        // Left teeth point toward the right.
+        // Right teeth point toward the left.
+        tooth.position.x = isLeft
+            ? toothLength*0.3
+            : -toothLength*0.3;
+
+        tooth.position.y = center.y;
+
+        // Alternate positions across the joint width.
+        tooth.position.z =
+            center.z-jointWidth/2+
+            (i+0.5)*pitch;
+
+        tooth.material = toothMaterial;
+
+        tooth.isPickable = false;
+    }
+
+    console.log("Interlocking zipper teeth created:",toothCount);
+}
+    // Position at the center of the joint model.
+
+    const centerY =
+        ((jointBounds.minY+jointBounds.maxY)/2)*modelScale;
+
+    const toothCount = 8;
+
+    for(let i=0;i<toothCount;i++){
+
+        const z =
+            -jointWidth/2+
+            (i+0.5)*(jointWidth/toothCount);
+
+        // Alternate left and right teeth.
+
+        const isLeft = i%2===0;
+
+        const tooth = BABYLON.MeshBuilder.CreateBox(
+            "zipperTooth_"+i,
+            {
+                width:toothLength,
+                height:toothHeight,
+                depth:toothWidth*0.8
+            },
+            scene
+        );
+
+        // Attach each tooth to its moving bridge half.
+
+        tooth.parent = isLeft
+            ? leftBridgeRoot
+            : rightBridgeRoot;
+
+        // Offset the teeth so they interlock.
+
+        tooth.position.x = isLeft
+            ? -toothLength*0.25
+            : toothLength*0.25;
+
+        tooth.position.y = centerY;
+
+        tooth.position.z = z;
+
+        tooth.material = toothMaterial;
+
+        tooth.isPickable = false;
+    }
+
+    console.log("Zipper teeth created:",toothCount);
+}
+    
 // ========================================
 // LOAD MODELS
 // ========================================
@@ -726,8 +880,10 @@ try{
 
     status.textContent = "Connecting expansion joints...";
 
-    splitJointGeometry(jointMeshes);
+// Create zipper teeth before disposing of the imported meshes.
+createZipperTeeth(jointMeshes);
 
+splitJointGeometry(jointMeshes);
     // Dispose of the empty container without disposing materials.
     jointRoot.dispose(false,false);
 

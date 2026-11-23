@@ -213,7 +213,8 @@ button {
 const BASE_URL =
 "https://raw.githubusercontent.com/aaronsCotch/bridge-simulator/main/";
 
-const BRIDGE_FILE = "2bridges.glb";
+const LEFT_BRIDGE_FILE = "Left bridge_2.glb";
+const RIGHT_BRIDGE_FILE = "right bridge.glb";
 
 const LEFT_JOINT_FILE = "left joint.glb";
 const RIGHT_JOINT_FILE = "right joint.glb";
@@ -414,6 +415,76 @@ function getMeshBounds(meshes) {
 // ========================================
 
 async function loadBridge() {
+
+    status.textContent = "Loading left bridge...";
+
+    const leftResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        LEFT_BRIDGE_FILE,
+        scene
+    );
+
+    const leftMeshes = leftResult.meshes.filter(mesh =>
+        mesh.getTotalVertices() > 0
+    );
+
+    if (!leftMeshes.length) {
+        throw new Error("Left bridge model has no visible mesh.");
+    }
+
+    status.textContent = "Loading right bridge...";
+
+    const rightResult = await BABYLON.SceneLoader.ImportMeshAsync(
+        null,
+        BASE_URL,
+        RIGHT_BRIDGE_FILE,
+        scene
+    );
+
+    const rightMeshes = rightResult.meshes.filter(mesh =>
+        mesh.getTotalVertices() > 0
+    );
+
+    if (!rightMeshes.length) {
+        throw new Error("Right bridge model has no visible mesh.");
+    }
+
+    // Get the combined dimensions before moving the models.
+    const allMeshes = [...leftMeshes, ...rightMeshes];
+    const bounds = getMeshBounds(allMeshes);
+
+    const width = bounds.maxX - bounds.minX;
+
+    if (width <= 0) {
+        throw new Error("Invalid bridge dimensions.");
+    }
+
+    // Scale both bridge sections together.
+    modelScale = MODEL_WIDTH / width;
+
+    // Put each model in its own movable group.
+    for (const mesh of leftMeshes) {
+        moveMeshPreservingWorld(mesh, leftBridge);
+    }
+
+    for (const mesh of rightMeshes) {
+        moveMeshPreservingWorld(mesh, rightBridge);
+    }
+
+    // Center and scale the complete bridge.
+    bridgeRoot.scaling.set(
+        modelScale,
+        modelScale,
+        modelScale
+    );
+
+    bridgeRoot.position.x = -bounds.centerX * modelScale;
+    bridgeRoot.position.y = -bounds.minY * modelScale;
+    bridgeRoot.position.z = -bounds.centerZ * modelScale;
+
+    status.textContent = "Bridge sections loaded. Loading joints...";
+}
 
     status.textContent = "Loading bridge model...";
 

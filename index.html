@@ -835,8 +835,8 @@ function findDeckSurfaceY(meshes){
             const centerY=(a.y+b.y+d.y)/3;
 
             if(
-                normal.y>0.85 &&
-                Math.abs(centerX)<MODEL_WIDTH*0.12
+                Math.abs(normal.y)>0.85 &&
+                Math.abs(centerX)<MODEL_WIDTH*0.5
             ){
 
                 heights.push(centerY);

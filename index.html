@@ -106,6 +106,13 @@ Visual movement is amplified for demonstration.
 
 "use strict";
 
+    window.onerror = function(message, source, line, column, error){
+    status.textContent = "JAVASCRIPT ERROR: " + message + " (Line " + line + ")";
+    console.error(error);
+};
+
+status.textContent = "Starting Babylon.js...";
+
 // ========================================
 // SETTINGS
 // ========================================

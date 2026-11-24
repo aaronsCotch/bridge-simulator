@@ -159,7 +159,9 @@ button{
 <h3 id="gap">0.000 mm</h3>
 
 <p id="status" class="status">Preparing simulation...</p>
-
+<p id="debugHeight" class="status">
+    Waiting for deck height...
+</p>
 </div>
 
 <button id="resetButton">Reset Simulation</button>
@@ -995,6 +997,8 @@ try{
     // Detect deck height.
     bridgeDeckLocalY =
     findDeckSurfaceY(bridgeMeshes);
+    document.getElementById("debugHeight").textContent =
+    "Detected deck height: " + bridgeDeckLocalY;
     status.textContent =
     "Detected deck height: " + bridgeDeckLocalY.toFixed(4);
     

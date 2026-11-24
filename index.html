@@ -995,7 +995,9 @@ try{
     // Detect deck height.
     bridgeDeckLocalY =
     findDeckSurfaceY(bridgeMeshes);
-
+    status.textContent =
+    "Detected deck height: " + bridgeDeckLocalY.toFixed(4);
+    
     console.log(
         "Detected bridge deck height:",
         bridgeDeckLocalY

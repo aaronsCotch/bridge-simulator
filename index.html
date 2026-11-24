@@ -898,7 +898,7 @@ function positionJoint(wrapper, meshes, side) {
 
   const targetCenterX =
     side === "left"
-    ? -BASE_CLOSING_OFFSET + scaledSize.x / 2 + 0.2
+    ? scaledSize.x / 2
     : BASE_CLOSING_OFFSET - scaledSize.x / 2
       + scaledSize.x * 0.05;
 

@@ -566,7 +566,7 @@ async function importJoint(filename,wrapper){
 
     for(const root of roots){
 
-        root.parent = wrapper;
+        root.setParent = (wrapper);
     }
 
     wrapper.computeWorldMatrix(true);

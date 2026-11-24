@@ -869,13 +869,13 @@ function positionJoint(wrapper, meshes, side) {
     wrapper.scaling.setAll(1);
     wrapper.position.set(0, 0, 0);
 
-    // Rotate joints toward the center gap.
+    // Joint orientation
     if (side === "left") {
         wrapper.rotation.y = Math.PI;
     }
 
     if (side === "right") {
-        wrapper.rotation.y = 0;
+        wrapper.rotation.y = Math.PI;
     }
 
     wrapper.computeWorldMatrix(true);
@@ -915,10 +915,7 @@ function positionJoint(wrapper, meshes, side) {
 
     wrapper.computeWorldMatrix(true);
 
-    console.log(
-        side + " joint position:",
-        wrapper.position
-    );
+    console.log(side + " joint position:", wrapper.position);
 }
 // ========================================
 // LOAD MODELS

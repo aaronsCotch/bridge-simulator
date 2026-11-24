@@ -1093,7 +1093,7 @@ function updateSimulation(){
     if(bridgeReady){
 
         leftBridgeRoot.position.x =
-        -BASE_CLOSING_OFFSET-movementPerSide;
+    -BASE_CLOSING_OFFSET + 0.5 - movementPerSide;
 
         rightBridgeRoot.position.x =
         BASE_CLOSING_OFFSET+movementPerSide;

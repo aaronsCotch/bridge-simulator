@@ -59,6 +59,22 @@ label{
 input,select{width:100%}
 input[type=range]{cursor:pointer}
 
+.toggle-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:20px;
+}
+
+.toggle-row input{
+    width:auto;
+    margin:0;
+}
+
+.toggle-row label{
+    margin:0;
+}
+
 select,button{
     padding:12px;
     border:0;
@@ -123,11 +139,11 @@ button{
 
 <h2>Simulation Controls</h2>
 
-<label for="temperature">Temperature Control</label>
+<label for="temperature">Temperature</label>
 <input type="range" id="temperature" min="-20" max="60" value="20">
 <h3 id="temperatureValue">20 °C</h3>
 
-<label for="mechanical">Mechanical Adjustment</label>
+<label for="mechanical">Center Joint Adjustment</label>
 <input type="range" id="mechanical" min="-100" max="100" value="0">
 <h3 id="mechanicalValue">0 mm</h3>
 
@@ -137,6 +153,17 @@ button{
 <option value="0.000023">Aluminum</option>
 <option value="0.000010">Concrete</option>
 </select>
+
+<div class="toggle-row">
+<input type="checkbox" id="gradientToggle">
+<label for="gradientToggle">Temperature Gradient</label>
+</div>
+
+<div id="gradientControls">
+<label for="gradient">Top to bottom temperature difference</label>
+<input type="range" id="gradient" min="-20" max="20" value="0" disabled>
+<h3 id="gradientValue">0 °C</h3>
+</div>
 
 <div class="data">
 
@@ -158,6 +185,9 @@ button{
 <p>Calculated Gap Change</p>
 <h3 id="gap">0.000 mm</h3>
 
+<p>Gradient Deflection</p>
+<h3 id="gradientDeflection">0.000 mm</h3>
+
 <p class="small">
 Positive gap change opens the joint; negative closes it.
 </p>
@@ -176,8 +206,10 @@ Waiting for deck height...
 Reference temperature: 20°C<br>
 Assumed bridge length: 50 meters (25 m per half)<br>
 Assumption: fixed outer supports and a free center joint<br>
+Assumed deck depth: 2 meters<br>
 Formula: ΔL = α × L₀ × ΔT<br>
 At fixed supports, warming ΔL closes the center gap by ΔL.<br>
+The optional gradient is through the deck depth and adds bending.<br>
 Visual movement is amplified 30× for demonstration.
 </p>
 
@@ -208,7 +240,7 @@ const REFERENCE_TEMP = 20;
 const BRIDGE_LENGTH = 50;
 const MODEL_WIDTH = 80;
 const VISUAL_AMPLIFICATION = 30;
-
+const DECK_DEPTH = 2;
 const BASE_CLOSING_OFFSET = 0.35;
 
 // ========================================
@@ -271,6 +303,14 @@ const camera = new BABYLON.ArcRotateCamera(
 camera.attachControl(canvas,true);
 camera.lowerRadiusLimit = 25;
 camera.upperRadiusLimit = 180;
+
+canvas.addEventListener(
+    "wheel",
+    function(event){
+        event.preventDefault();
+    },
+    {passive:false}
+);
 
 const ambient = new BABYLON.HemisphericLight(
     "ambient",
@@ -494,11 +534,31 @@ function splitBridgeGeometry(meshes){
 
         const indices = source.getIndices();
 
-        const uvs = source.getVerticesData(
-            BABYLON.VertexBuffer.UVKind
-        );
-
         if(!positions || !indices) continue;
+
+        const attributeStreams = [
+            {kind:BABYLON.VertexBuffer.UVKind, property:"uvs", components:2},
+            {kind:BABYLON.VertexBuffer.UV2Kind, property:"uvs2", components:2},
+            {kind:BABYLON.VertexBuffer.UV3Kind, property:"uvs3", components:2},
+            {kind:BABYLON.VertexBuffer.UV4Kind, property:"uvs4", components:2},
+            {kind:BABYLON.VertexBuffer.UV5Kind, property:"uvs5", components:2},
+            {kind:BABYLON.VertexBuffer.UV6Kind, property:"uvs6", components:2},
+            {kind:BABYLON.VertexBuffer.ColorKind, property:"colors", components:0}
+        ].map(stream=>{
+            const values = source.getVerticesData(stream.kind);
+            if(!values) return null;
+
+            const components = stream.components ||
+                values.length/(positions.length/3);
+
+            if(!Number.isInteger(components) || components < 1){
+                throw new Error(
+                    "Invalid "+stream.property+" data in "+source.name
+                );
+            }
+
+            return {...stream,values,components};
+        }).filter(Boolean);
 
         source.computeWorldMatrix(true);
 
@@ -532,11 +592,30 @@ function splitBridgeGeometry(meshes){
             );
         }
 
-        const leftPositions = [];
-        const leftUVs = [];
+        const splitGroups = {
+            left:new Map(),
+            right:new Map()
+        };
 
-        const rightPositions = [];
-        const rightUVs = [];
+        const subMeshes = source.subMeshes || [];
+
+        function getGroup(side,materialIndex){
+            const groups = splitGroups[side];
+
+            if(!groups.has(materialIndex)){
+                groups.set(materialIndex,{
+                    positions:[],
+                    attributes:new Map(
+                        attributeStreams.map(stream=>[
+                            stream.property,
+                            []
+                        ])
+                    )
+                });
+            }
+
+            return groups.get(materialIndex);
+        }
 
         for(let i=0;i<indices.length;i+=3){
 
@@ -550,31 +629,36 @@ function splitBridgeGeometry(meshes){
                 transformed[c*3]
             ) / 3;
 
-            const targetPositions =
-            centerX < 0 ? leftPositions : rightPositions;
+            const side = centerX < 0 ? "left" : "right";
 
-            const targetUVs =
-            centerX < 0 ? leftUVs : rightUVs;
+            const subMesh = subMeshes.find(item=>
+                i >= item.indexStart &&
+                i < item.indexStart+item.indexCount
+            );
+            const materialIndex = subMesh
+                ? subMesh.materialIndex
+                : 0;
+            const group = getGroup(side,materialIndex);
 
             for(const index of [a,b,c]){
 
-                targetPositions.push(
+                group.positions.push(
                     transformed[index*3],
                     transformed[index*3+1],
                     transformed[index*3+2]
                 );
 
-                if(uvs){
-                    targetUVs.push(
-                        uvs[index*2],
-                        uvs[index*2+1]
-                    );
-                }else{
-                    targetUVs.push(0,0);
+                for(const stream of attributeStreams){
+                    const target = group.attributes.get(stream.property);
+                    for(let component=0;component<stream.components;component++){
+                        target.push(
+                            stream.values[index*stream.components+component]
+                        );
+                    }
                 }
             }
 
-            if(centerX < 0){
+            if(side === "left"){
                 leftTriangles++;
             }else{
                 rightTriangles++;
@@ -583,12 +667,12 @@ function splitBridgeGeometry(meshes){
 
         function createSplitMesh(
             name,
-            verts,
-            uv,
+            group,
             parent,
             material
         ){
 
+            const verts = group.positions;
             if(!verts.length) return;
 
             const mesh = new BABYLON.Mesh(name,scene);
@@ -611,29 +695,42 @@ function splitBridgeGeometry(meshes){
             data.positions = verts;
             data.indices = meshIndices;
             data.normals = normals;
-            data.uvs = uv;
+
+            for(const stream of attributeStreams){
+                data[stream.property] =
+                group.attributes.get(stream.property);
+            }
 
             data.applyToMesh(mesh,true);
 
             mesh.material = material;
+            mesh.hasVertexAlpha = source.hasVertexAlpha;
             mesh.parent = parent;
         }
 
-        createSplitMesh(
-            "leftBridgePart",
-            leftPositions,
-            leftUVs,
-            leftBridgeRoot,
-            source.material
-        );
+        for(const [materialIndex,group] of splitGroups.left){
+            const material = source.material instanceof BABYLON.MultiMaterial
+                ? source.material.subMaterials[materialIndex]
+                : source.material;
+            createSplitMesh(
+                "leftBridgePart_"+materialIndex,
+                group,
+                leftBridgeRoot,
+                material
+            );
+        }
 
-        createSplitMesh(
-            "rightBridgePart",
-            rightPositions,
-            rightUVs,
-            rightBridgeRoot,
-            source.material
-        );
+        for(const [materialIndex,group] of splitGroups.right){
+            const material = source.material instanceof BABYLON.MultiMaterial
+                ? source.material.subMaterials[materialIndex]
+                : source.material;
+            createSplitMesh(
+                "rightBridgePart_"+materialIndex,
+                group,
+                rightBridgeRoot,
+                material
+            );
+        }
 
         source.dispose(false,false);
     }
@@ -902,16 +999,16 @@ function positionJoint(wrapper, meshes, side) {
 
     const scaledSize = size.scale(scale);
 
-// Move both joints toward the center gap.
 const JOINT_INWARD_OFFSET = 0.1;
 
 const targetCenterX =
     side === "left"
     ? -scaledSize.x / 2 - JOINT_INWARD_OFFSET
-   : BASE_CLOSING_OFFSET - scaledSize.x / 2
-  + scaledSize.x * 0.05 - JOINT_INWARD_OFFSET;
+    : BASE_CLOSING_OFFSET - scaledSize.x / 2
+      + scaledSize.x * 0.05 - JOINT_INWARD_OFFSET;
     const targetCenterY =
-        bridgeDeckLocalY - scaledSize.y / 4 - 2;
+        bridgeDeckLocalY - scaledSize.y / 4 - 2 +
+        (side === "left" ? scaledSize.y * 0.025 : 0);
 
     const direction = side === "left" ? 1 : -1;
 
@@ -1087,15 +1184,12 @@ function updateSimulation(){
     const wholeDeckExpansionMm =
     wholeDeckExpansion*1000;
 
-    // Positive mechanical values open the center joint.
-    // Warming expands toward fixed outer supports and closes the joint.
-    const totalGapChangeMm =
+    const totalGapMm =
     mechanical-wholeDeckExpansionMm;
 
     const movementPerSideMm =
-    totalGapChangeMm/2;
+    totalGapMm/2;
 
-    // This converts half-span physical movement to amplified model units.
     const movementPerSide =
     (movementPerSideMm/1000/(BRIDGE_LENGTH/2))*
     MODEL_WIDTH*
@@ -1106,12 +1200,11 @@ function updateSimulation(){
 
     if(bridgeReady){
 
-        // Positive gap change moves each side outward.
         leftBridgeRoot.position.x =
-    -BASE_CLOSING_OFFSET + 0.5 - movementPerSide;
+        -movementPerSide;
 
         rightBridgeRoot.position.x =
-        BASE_CLOSING_OFFSET+movementPerSide;
+        movementPerSide;
     }
 
     // Update displayed values.
@@ -1138,7 +1231,7 @@ function updateSimulation(){
     alpha.toExponential(2)+" /°C";
 
     document.getElementById("gap").textContent =
-    (totalGapChangeMm>0?"+":"")+totalGapChangeMm.toFixed(3)+" mm";
+    (totalGapMm>0?"+":"")+totalGapMm.toFixed(3)+" mm";
 }
 
 // ========================================

@@ -1009,13 +1009,15 @@ const targetCenterX =
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2 +
         (side === "left" ? scaledSize.y * 0.025 : 0);
+    const targetCenterZ =
+        worldToBridge(BABYLON.Vector3.Zero()).z;
 
     const direction = side === "left" ? 1 : -0.9;
 
     wrapper.position.set(
         targetCenterX + direction * center.x * scale,
         targetCenterY - center.y * scale,
-        0
+        targetCenterZ + center.z * scale
     );
 
     wrapper.computeWorldMatrix(true);

@@ -44,6 +44,41 @@ header p{color:#aabbd0}
     touch-action:none;
 }
 
+.viewport{
+    position:relative;
+    min-width:0;
+}
+
+.heat-legend{
+    position:absolute;
+    top:18px;
+    right:14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:7px;
+    padding:8px;
+    border-radius:6px;
+    background:rgba(16,24,39,.72);
+    color:white;
+    font-size:12px;
+    text-shadow:0 1px 2px #000;
+}
+
+.heat-scale{
+    width:14px;
+    height:150px;
+    border-radius:4px;
+    background:linear-gradient(
+        to top,
+        #244bff 0%,
+        #18d8e8 25%,
+        #31d65b 50%,
+        #ffdf27 75%,
+        #f32424 100%
+    );
+}
+
 .controls{
     background:#1c2a40;
     padding:20px;
@@ -133,7 +168,14 @@ button{
 
 <div class="container">
 
+<div class="viewport">
 <canvas id="renderCanvas"></canvas>
+<div class="heat-legend" aria-label="Bridge temperature color scale">
+<span>60 °C</span>
+<div class="heat-scale"></div>
+<span>-20 °C</span>
+</div>
+</div>
 
 <div class="controls">
 
@@ -260,6 +302,18 @@ document.getElementById("mechanical");
 const materialSelect =
 document.getElementById("material");
 
+const gradientToggle =
+document.getElementById("gradientToggle");
+
+const gradientSlider =
+document.getElementById("gradient");
+
+const heatLegend =
+document.querySelector(".heat-legend");
+
+let bridgeHeatMaterial;
+const bridgeOriginalMaterials = new WeakMap();
+
 // ========================================
 // ERROR HANDLING
 // ========================================
@@ -287,6 +341,108 @@ window.addEventListener("unhandledrejection",function(event){
 
 const engine = new BABYLON.Engine(canvas,true);
 const scene = new BABYLON.Scene(engine);
+
+BABYLON.Effect.ShadersStore["bridgeHeatVertexShader"] = `
+    precision highp float;
+    attribute vec3 position;
+    attribute vec3 normal;
+    uniform mat4 world;
+    uniform mat4 worldViewProjection;
+    varying float vBridgeY;
+    varying vec3 vNormal;
+
+    void main(void){
+        vBridgeY = position.y;
+        vNormal = normalize(mat3(world) * normal);
+        gl_Position = worldViewProjection * vec4(position, 1.0);
+    }
+`;
+
+BABYLON.Effect.ShadersStore["bridgeHeatFragmentShader"] = `
+    precision highp float;
+    varying float vBridgeY;
+    varying vec3 vNormal;
+    uniform float temperature;
+    uniform float temperatureGradient;
+    uniform float gradientEnabled;
+    uniform float deckHeight;
+    uniform float deckDepth;
+    uniform float minimumTemperature;
+    uniform float maximumTemperature;
+
+    vec3 heatColor(float value){
+        if(value < 0.25){
+            return mix(
+                vec3(0.14, 0.28, 1.0),
+                vec3(0.05, 0.88, 0.94),
+                value * 4.0
+            );
+        }
+        if(value < 0.5){
+            return mix(
+                vec3(0.05, 0.88, 0.94),
+                vec3(0.18, 0.84, 0.28),
+                (value - 0.25) * 4.0
+            );
+        }
+        if(value < 0.75){
+            return mix(
+                vec3(0.18, 0.84, 0.28),
+                vec3(1.0, 0.87, 0.08),
+                (value - 0.5) * 4.0
+            );
+        }
+        return mix(
+            vec3(1.0, 0.87, 0.08),
+            vec3(0.96, 0.08, 0.04),
+            (value - 0.75) * 4.0
+        );
+    }
+
+    void main(void){
+        float depthFraction = clamp(
+            (vBridgeY - (deckHeight - deckDepth)) / deckDepth,
+            0.0,
+            1.0
+        );
+        float localTemperature = temperature +
+            gradientEnabled * (depthFraction - 0.5) *
+            temperatureGradient;
+        float heat = clamp(
+            (localTemperature - minimumTemperature) /
+            (maximumTemperature - minimumTemperature),
+            0.0,
+            1.0
+        );
+
+        vec3 normal = normalize(vNormal);
+        vec3 lightDirection = normalize(vec3(-0.4, 0.8, -0.5));
+        float lighting = 0.48 +
+            0.52 * max(dot(normal, lightDirection), 0.0);
+
+        gl_FragColor = vec4(heatColor(heat) * lighting, 1.0);
+    }
+`;
+
+bridgeHeatMaterial = new BABYLON.ShaderMaterial(
+    "bridgeHeatMaterial",
+    scene,
+    "bridgeHeat",
+    {
+        attributes:["position","normal"],
+        uniforms:[
+            "world",
+            "worldViewProjection",
+            "temperature",
+            "temperatureGradient",
+            "gradientEnabled",
+            "deckHeight",
+            "deckDepth",
+            "minimumTemperature",
+            "maximumTemperature"
+        ]
+    }
+);
 
 scene.clearColor =
 new BABYLON.Color4(0.06,0.10,0.16,1);
@@ -704,6 +860,7 @@ function splitBridgeGeometry(meshes){
             data.applyToMesh(mesh,true);
 
             mesh.material = material;
+            bridgeOriginalMaterials.set(mesh,material);
             mesh.hasVertexAlpha = source.hasVertexAlpha;
             mesh.parent = parent;
         }
@@ -742,6 +899,19 @@ function splitBridgeGeometry(meshes){
     }
 
     console.log("Bridge halves separated.");
+}
+
+function setBridgeAppearance(showHeatMap){
+
+    for(const root of [leftBridgeRoot,rightBridgeRoot]){
+        for(const mesh of root.getChildMeshes(true)){
+            mesh.material = showHeatMap
+                ? bridgeHeatMaterial
+                : bridgeOriginalMaterials.get(mesh);
+        }
+    }
+
+    heatLegend.hidden = !showHeatMap;
 }
 
 // ========================================
@@ -1171,6 +1341,9 @@ function updateSimulation(){
     const temperature =
     Number(temperatureSlider.value);
 
+    const temperatureGradient =
+    Number(gradientSlider.value);
+
     const mechanical =
     Number(mechanicalSlider.value);
 
@@ -1197,6 +1370,33 @@ function updateSimulation(){
     MODEL_WIDTH*
     VISUAL_AMPLIFICATION;
 
+    bridgeHeatMaterial.setFloat("temperature",temperature);
+    bridgeHeatMaterial.setFloat(
+        "temperatureGradient",
+        temperatureGradient
+    );
+    bridgeHeatMaterial.setFloat(
+        "gradientEnabled",
+        gradientToggle.checked ? 1 : 0
+    );
+    bridgeHeatMaterial.setFloat(
+        "deckHeight",
+        Number.isFinite(bridgeDeckLocalY) ? bridgeDeckLocalY : 0
+    );
+    bridgeHeatMaterial.setFloat(
+        "deckDepth",
+        DECK_DEPTH*MODEL_WIDTH/BRIDGE_LENGTH
+    );
+    bridgeHeatMaterial.setFloat(
+        "minimumTemperature",
+        Number(temperatureSlider.min)
+    );
+    bridgeHeatMaterial.setFloat(
+        "maximumTemperature",
+        Number(temperatureSlider.max)
+    );
+    setBridgeAppearance(gradientToggle.checked);
+
     // Move bridge halves.
     // Joint wrappers follow their respective halves.
 
@@ -1212,6 +1412,10 @@ function updateSimulation(){
 
     document.getElementById("temperatureValue").textContent =
     temperature+" °C";
+
+    document.getElementById("gradientValue").textContent =
+    (temperatureGradient>0?"+":"")+
+    temperatureGradient+" °C";
 
     document.getElementById("mechanicalValue").textContent =
     (mechanical>0?"+":"")+mechanical+" mm";
@@ -1254,6 +1458,19 @@ materialSelect.addEventListener(
     updateSimulation
 );
 
+gradientToggle.addEventListener(
+    "change",
+    function(){
+        gradientSlider.disabled = !gradientToggle.checked;
+        updateSimulation();
+    }
+);
+
+gradientSlider.addEventListener(
+    "input",
+    updateSimulation
+);
+
 // ========================================
 // RESET
 // ========================================
@@ -1265,6 +1482,9 @@ document.getElementById("resetButton").addEventListener(
         temperatureSlider.value = 20;
         mechanicalSlider.value = 0;
         materialSelect.value = "0.000012";
+        gradientToggle.checked = false;
+        gradientSlider.value = 0;
+        gradientSlider.disabled = true;
 
         updateSimulation();
     }

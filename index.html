@@ -571,6 +571,22 @@ async function importJoint(filename,wrapper){
 
     wrapper.computeWorldMatrix(true);
 
+for (const mesh of meshes) {
+    mesh.computeWorldMatrix(true);
+
+    const box = mesh.getBoundingInfo().boundingBox;
+
+    console.log(
+        side,
+        mesh.name,
+        "CENTER:",
+        box.centerWorld,
+        "SIZE:",
+        box.extendSizeWorld.scale(2)
+    );
+}
+
+    
     for(const mesh of meshes){
 
         mesh.computeWorldMatrix(true);

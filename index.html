@@ -871,7 +871,7 @@ function positionJoint(wrapper,meshes,side){
     wrapper.scaling.setAll(1);
     wrapper.position.set(0,0,0);
 wrapper.rotation.y =
-    side === "left" ? Math.PI : 0;
+    side === "left" ? Math.PI : Math.PI;
     wrapper.computeWorldMatrix(true);
 
     const bounds =

@@ -1094,11 +1094,13 @@ function updateSimulation(){
 
     if(bridgeReady){
 
-        leftBridgeRoot.position.x =
-    -BASE_CLOSING_OFFSET + 0.5 - movementPerSide;
+       const BRIDGE_CLOSING_ADJUSTMENT = 0.1;
 
-        rightBridgeRoot.position.x =
-        BASE_CLOSING_OFFSET+movementPerSide;
+leftBridgeRoot.position.x =
+    -BASE_CLOSING_OFFSET + 0.5 + BRIDGE_CLOSING_ADJUSTMENT - movementPerSide;
+
+rightBridgeRoot.position.x =
+    BASE_CLOSING_OFFSET - BRIDGE_CLOSING_ADJUSTMENT + movementPerSide;
     }
 
     // Update displayed values.

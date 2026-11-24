@@ -871,8 +871,9 @@ function positionJoint(wrapper, meshes, side) {
 
     // Rotate the joints toward the center gap.
    wrapper.rotation.y =
-    side === "left" ? Math.PI : 0;
-
+    side === "left" ? Math.PI : 0; 
+    side === "right" ? 0 : 0 ;
+    
     wrapper.computeWorldMatrix(true);
 
     const bounds = getJointLocalBounds(wrapper, meshes);

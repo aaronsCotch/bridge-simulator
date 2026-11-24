@@ -896,10 +896,11 @@ function positionJoint(wrapper, meshes, side) {
 
     const scaledSize = size.scale(scale);
 
- const targetCenterX =
+const targetCenterX =
     side === "left"
-    ? scaledSize.x / 2
-    : -scaledSize.x / 2;
+    ? -scaledSize.x / 2
+    : BASE_CLOSING_OFFSET - scaledSize.x / 2
+      + scaledSize.x * 0.05;
 
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2;

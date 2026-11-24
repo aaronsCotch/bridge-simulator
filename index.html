@@ -857,79 +857,74 @@ function getJointLocalBounds(wrapper,meshes){
 // POSITION JOINTS
 // ========================================
 
-function positionJoint(wrapper,meshes,side){
+function positionJoint(wrapper, meshes, side) {
 
-    if(
+    if (
         !Number.isFinite(bridgeDeckWidthLocal) ||
         !Number.isFinite(bridgeDeckLocalY)
-    ){
+    ) {
         throw new Error(
             "Bridge deck dimensions are not ready."
         );
     }
 
     wrapper.scaling.setAll(1);
-    wrapper.position.set(0,0,0);
-wrapper.rotation.y =
-    side === "left" ? Math.PI : Math.PI;
+    wrapper.position.set(0, 0, 0);
+
+    // Restore the separate rotations.
+    wrapper.rotation.y =
+        side === "left" ? Math.PI : 0;
+
     wrapper.computeWorldMatrix(true);
 
     const bounds =
-    getJointLocalBounds(wrapper,meshes);
+        getJointLocalBounds(wrapper, meshes);
 
     const size = bounds.size;
     const center = bounds.center;
 
-    if(
+    if (
         size.x <= 0 ||
         size.y <= 0 ||
         size.z <= 0
-    ){
+    ) {
         throw new Error(
-            side+" joint has invalid dimensions."
+            side + " joint has invalid dimensions."
         );
     }
 
-    // Keep the original joint size calculation.
     const targetWidth =
-    bridgeDeckWidthLocal * 0.90;
+        bridgeDeckWidthLocal * 0.90;
 
     const scale =
-    targetWidth / size.z;
+        targetWidth / size.z;
 
     wrapper.scaling.setAll(scale);
 
     const scaledSize = size.scale(scale);
 
-    // Place each joint on its correct bridge half.
     const targetCenterX =
-    side === "left"
-    ? -BASE_CLOSING_OFFSET + scaledSize.x/2
-    : BASE_CLOSING_OFFSET - scaledSize.x/2;
+        side === "left"
+        ? -BASE_CLOSING_OFFSET + scaledSize.x / 2
+        : BASE_CLOSING_OFFSET - scaledSize.x / 2;
 
-    // Keep the current vertical positioning formula for testing.
     const targetCenterY =
-    bridgeDeckLocalY - scaledSize.y / 4 - 2 ;
-
-    console.log("DECK HEIGHT:",bridgeDeckLocalY);
-    console.log("JOINT HEIGHT:",scaledSize.y);
-    console.log("JOINT TARGET Y:",targetCenterY);
+        bridgeDeckLocalY - scaledSize.y / 4 - 2;
 
     const targetCenterZ = 0;
 
-const direction = side === "left" ? 1 : -1;
+    const direction =
+        side === "left" ? 1 : -1;
 
-wrapper.position.set(
-    targetCenterX + direction * center.x * scale,
-    targetCenterY - center.y * scale,
-    targetCenterZ + direction * center.z * scale
-);
- 
+    wrapper.position.set(
+        targetCenterX + direction * center.x * scale,
+        targetCenterY - center.y * scale,
+        targetCenterZ + direction * center.z * scale
+    );
 
     wrapper.computeWorldMatrix(true);
 
-    console.log(side+" joint scale:",scale);
-    console.log(side+" joint position:",wrapper.position);
+    console.log(side + " joint position:", wrapper.position);
 }
 
 // ========================================

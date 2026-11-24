@@ -863,41 +863,29 @@ function positionJoint(wrapper, meshes, side) {
         !Number.isFinite(bridgeDeckWidthLocal) ||
         !Number.isFinite(bridgeDeckLocalY)
     ) {
-        throw new Error(
-            "Bridge deck dimensions are not ready."
-        );
+        throw new Error("Bridge deck dimensions are not ready.");
     }
 
     wrapper.scaling.setAll(1);
     wrapper.position.set(0, 0, 0);
 
-    // Restore the separate rotations.
-    wrapper.rotation.y =
-        side === "left" ? Math.PI : 0;
+    // Rotate the joints toward the center gap.
+   wrapper.rotation.y =
+    Math.PI;
 
     wrapper.computeWorldMatrix(true);
 
-    const bounds =
-        getJointLocalBounds(wrapper, meshes);
+    const bounds = getJointLocalBounds(wrapper, meshes);
 
     const size = bounds.size;
     const center = bounds.center;
 
-    if (
-        size.x <= 0 ||
-        size.y <= 0 ||
-        size.z <= 0
-    ) {
-        throw new Error(
-            side + " joint has invalid dimensions."
-        );
+    if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
+        throw new Error(side + " joint has invalid dimensions.");
     }
 
-    const targetWidth =
-        bridgeDeckWidthLocal * 0.90;
-
-    const scale =
-        targetWidth / size.z;
+    const targetWidth = bridgeDeckWidthLocal * 0.90;
+    const scale = targetWidth / size.z;
 
     wrapper.scaling.setAll(scale);
 
@@ -911,16 +899,13 @@ function positionJoint(wrapper, meshes, side) {
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2;
 
-    const targetCenterZ = 0;
+    const direction = side === "left" ? 1 : -1;
 
-    const direction =
-        side === "left" ? 1 : -1;
-
-    wrapper.position.set(
-        targetCenterX + direction * center.x * scale,
-        targetCenterY - center.y * scale,
-        targetCenterZ + direction * center.z * scale
-    );
+   wrapper.position.set(
+    targetCenterX + direction * center.x * scale,
+    targetCenterY - center.y * scale,
+    0
+);
 
     wrapper.computeWorldMatrix(true);
 

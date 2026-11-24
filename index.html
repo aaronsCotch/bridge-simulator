@@ -907,7 +907,7 @@ const targetCenterX =
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2;
 
-    const direction = side === "left" ? 1 : 1;
+    const direction = side === "left" ? 1 : -1.5;
 
     wrapper.position.set(
         targetCenterX + direction * center.x * scale,

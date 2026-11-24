@@ -578,11 +578,25 @@ async function importJoint(filename,wrapper){
         mesh.setEnabled(true);
     }
 
+    // JOINT MODEL DIAGNOSTICS
+
+    for (const mesh of meshes) {
+        mesh.computeWorldMatrix(true);
+
+        const bounds = mesh.getBoundingInfo().boundingBox;
+
+        console.log("JOINT:", mesh.name);
+        console.log("MIN:", bounds.minimumWorld);
+        console.log("MAX:", bounds.maximumWorld);
+        console.log("SIZE:", bounds.maximumWorld.subtract(bounds.minimumWorld));
+    }
+
     return {
         meshes,
         roots
     };
 }
+
 
 // ========================================
 // SPLIT BRIDGE GEOMETRY

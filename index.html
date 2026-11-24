@@ -896,7 +896,7 @@ function positionJoint(wrapper,meshes,side){
         );
     }
 
-    // Preserve the existing joint size.
+    wrapper.scaling.setAll(1);
     wrapper.position.set(0,0,0);
     wrapper.computeWorldMatrix(true);
 
@@ -916,18 +916,23 @@ function positionJoint(wrapper,meshes,side){
         );
     }
 
-    const scale = wrapper.scaling.x;
+    // Restore the original correct joint size.
+    const targetWidth =
+        bridgeDeckWidthLocal * 0.90;
+
+    const scale =
+        targetWidth / size.z;
+
+    wrapper.scaling.setAll(scale);
 
     const scaledSize = size.scale(scale);
 
-    // Left belongs on negative X.
-    // Right belongs on positive X.
+    // Correct bridge-side placement.
     const targetCenterX =
         side === "left"
         ? -BASE_CLOSING_OFFSET + scaledSize.x/2
         : BASE_CLOSING_OFFSET - scaledSize.x/2;
 
-    // Keep the joint embedded in the deck.
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y/2;
 
@@ -941,9 +946,9 @@ function positionJoint(wrapper,meshes,side){
 
     wrapper.computeWorldMatrix(true);
 
+    console.log(side+" joint scale:",scale);
     console.log(side+" joint position:",wrapper.position);
 }
-
 // ========================================
 // LOAD MODELS
 // ========================================

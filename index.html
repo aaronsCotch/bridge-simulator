@@ -944,9 +944,10 @@ function findDeckSurfaceY(meshes){
 
 function positionJoint(wrapper, meshes, side) {
 
-    const JOINT_SCALE = 1;
+    // Temporary scale for checking the model.
+    const JOINT_SCALE = 0.01;
 
-    wrapper.position.set(0, 20, 0);
+    wrapper.position.set(0, 0, 0);
 
     wrapper.scaling.set(
         JOINT_SCALE,
@@ -956,8 +957,35 @@ function positionJoint(wrapper, meshes, side) {
 
     wrapper.computeWorldMatrix(true);
 
-   console.log(side + " joint test position:", wrapper.position);
-    console.log(side + " joint meshes:", meshes);
+    // Calculate the combined joint dimensions.
+    let min = new BABYLON.Vector3(
+        Infinity, Infinity, Infinity
+    );
+
+    let max = new BABYLON.Vector3(
+        -Infinity, -Infinity, -Infinity
+    );
+
+    for (const mesh of meshes) {
+
+        mesh.computeWorldMatrix(true);
+
+        const box =
+            mesh.getBoundingInfo().boundingBox;
+
+        const corners = [
+            new BABYLON.Vector3(box.minimumWorld.x, box.minimumWorld.y, box.minimumWorld.z),
+            new BABYLON.Vector3(box.maximumWorld.x, box.maximumWorld.y, box.maximumWorld.z)
+        ];
+
+        for (const corner of corners) {
+            min = BABYLON.Vector3.Minimize(min, corner);
+            max = BABYLON.Vector3.Maximize(max, corner);
+        }
+    }
+
+    console.log(side + " JOINT TOTAL SIZE:", max.subtract(min));
+    console.log(side + " JOINT CENTER:", min.add(max).scale(0.5));
 }
 
 // ========================================

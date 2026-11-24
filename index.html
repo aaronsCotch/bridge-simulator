@@ -909,6 +909,9 @@ function positionJoint(wrapper,meshes,side){
     // Place the joint so its bottom meets the deck top.
     const targetCenterY =
     bridgeDeckLocalY - scaledSize.y;
+console.log("DECK HEIGHT:", bridgeDeckLocalY);
+console.log("JOINT HEIGHT:", scaledSize.y);
+console.log("JOINT TARGET Y:", targetCenterY);
 
     const targetCenterZ = 0;
 

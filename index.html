@@ -1033,20 +1033,20 @@ try{
         rightJointRoot
     );
 
-    // Position both joints.
-    status.textContent = "Positioning interlocking joints...";
+   // Position both joints.
+status.textContent = "Positioning interlocking joints...";
 
-    positionJoint(
-        leftJointRoot,
-        leftMeshes,
-        "left"
-    );
+positionJoint(
+    leftJointRoot,
+    leftMeshes,
+    "right"
+);
 
-    positionJoint(
-        rightJointRoot,
-        rightMeshes,
-        "right"
-    );
+positionJoint(
+    rightJointRoot,
+    rightMeshes,
+    "left"
+);
 
     modelsReady = true;
     updateSimulation();

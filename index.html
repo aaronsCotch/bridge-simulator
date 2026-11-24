@@ -870,11 +870,11 @@ function positionJoint(wrapper, meshes, side) {
     wrapper.position.set(0, 0, 0);
 
     // Rotate the joints toward the center gap.
-   if (side === "left") {
+   if (side === "right") {
     wrapper.rotation.y = Math.PI;
 }
 
-if (side === "right") {
+if (side === "left") {
     wrapper.rotation.y = 0;
 }
     

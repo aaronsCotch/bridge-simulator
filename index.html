@@ -132,7 +132,6 @@ button{
 <h3 id="mechanicalValue">0 mm</h3>
 
 <label for="material">Bridge Material</label>
-
 <select id="material">
 <option value="0.000012">Steel</option>
 <option value="0.000023">Aluminum</option>
@@ -176,7 +175,6 @@ Visual movement is amplified for demonstration.
 </div>
 
 <script>
-
 (async function(){
 
 "use strict";
@@ -229,7 +227,6 @@ window.onerror = function(message,source,line,column,error){
     "JAVASCRIPT ERROR: "+message+" (Line "+line+")";
 
     console.error(error);
-
     return false;
 };
 
@@ -246,7 +243,6 @@ window.addEventListener("unhandledrejection",function(event){
 // ========================================
 
 const engine = new BABYLON.Engine(canvas,true);
-
 const scene = new BABYLON.Scene(engine);
 
 scene.clearColor =
@@ -262,7 +258,6 @@ const camera = new BABYLON.ArcRotateCamera(
 );
 
 camera.attachControl(canvas,true);
-
 camera.lowerRadiusLimit = 25;
 camera.upperRadiusLimit = 180;
 
@@ -392,10 +387,7 @@ async function importBridge(filename,parent){
     );
 
     if(!meshes.length){
-
-        throw new Error(
-            "Bridge model contains no geometry."
-        );
+        throw new Error("Bridge model contains no geometry.");
     }
 
     for(const mesh of meshes){
@@ -411,10 +403,8 @@ async function importBridge(filename,parent){
         world.decompose(scaling,rotation,position);
 
         mesh.parent = parent;
-
         mesh.position.copyFrom(position);
         mesh.scaling.copyFrom(scaling);
-
         mesh.rotationQuaternion = rotation;
     }
 
@@ -442,10 +432,7 @@ async function importJoint(filename,wrapper){
     );
 
     if(!meshes.length){
-
-        throw new Error(
-            "No geometry found in " + filename
-        );
+        throw new Error("No geometry found in "+filename);
     }
 
     const allNodes = [
@@ -459,17 +446,13 @@ async function importJoint(filename,wrapper){
         !node.parent || !nodeSet.has(node.parent)
     );
 
-    // Attach each imported root to its joint wrapper.
-
     for(const root of roots){
-
         root.setParent(wrapper);
     }
 
     wrapper.computeWorldMatrix(true);
 
     for(const mesh of meshes){
-
         mesh.computeWorldMatrix(true);
         mesh.isVisible = true;
         mesh.setEnabled(true);
@@ -494,15 +477,13 @@ function splitBridgeGeometry(meshes){
 
     for(const source of meshes){
 
-        const positions =
-        source.getVerticesData(
+        const positions = source.getVerticesData(
             BABYLON.VertexBuffer.PositionKind
         );
 
         const indices = source.getIndices();
 
-        const uvs =
-        source.getVerticesData(
+        const uvs = source.getVerticesData(
             BABYLON.VertexBuffer.UVKind
         );
 
@@ -511,7 +492,6 @@ function splitBridgeGeometry(meshes){
         source.computeWorldMatrix(true);
 
         const worldMatrix = source.getWorldMatrix();
-
         const transformed = [];
 
         for(let i=0;i<positions.length;i+=3){
@@ -574,14 +554,11 @@ function splitBridgeGeometry(meshes){
                 );
 
                 if(uvs){
-
                     targetUVs.push(
                         uvs[index*2],
                         uvs[index*2+1]
                     );
-
                 }else{
-
                     targetUVs.push(0,0);
                 }
             }
@@ -604,7 +581,6 @@ function splitBridgeGeometry(meshes){
             if(!verts.length) return;
 
             const mesh = new BABYLON.Mesh(name,scene);
-
             const meshIndices = [];
 
             for(let i=0;i<verts.length/3;i++){
@@ -652,7 +628,6 @@ function splitBridgeGeometry(meshes){
     }
 
     if(leftTriangles === 0 || rightTriangles === 0){
-
         throw new Error(
             "Could not separate bridge into left and right halves."
         );
@@ -667,8 +642,8 @@ function splitBridgeGeometry(meshes){
 
 function findDeckSurfaceY(meshes){
 
-    const heights = [];
-    const vertexHeights = [];
+    const centralHeights = [];
+    const fallbackHeights = [];
 
     for(const mesh of meshes){
 
@@ -685,27 +660,6 @@ function findDeckSurfaceY(meshes){
         mesh.computeWorldMatrix(true);
 
         const world = mesh.getWorldMatrix();
-
-        for(let i=0;i<positions.length;i+=3){
-
-            const local = new BABYLON.Vector3(
-                positions[i],
-                positions[i+1],
-                positions[i+2]
-            );
-
-            const worldPoint =
-            BABYLON.Vector3.TransformCoordinates(
-                local,
-                world
-            );
-
-            const p = worldToBridge(worldPoint);
-
-            if(Math.abs(p.x) < MODEL_WIDTH*0.45){
-                vertexHeights.push(p.y);
-            }
-        }
 
         for(let i=0;i<indices.length;i+=3){
 
@@ -739,38 +693,57 @@ function findDeckSurfaceY(meshes){
 
             normal.normalize();
 
+            // Only consider nearly horizontal faces.
+            if(Math.abs(normal.y) < 0.85) continue;
+
             const centerX =
             (points[0].x+points[1].x+points[2].x)/3;
 
             const centerY =
             (points[0].y+points[1].y+points[2].y)/3;
 
-            if(
-                Math.abs(normal.y) > 0.85 &&
-                Math.abs(centerX) < MODEL_WIDTH*0.45
-            ){
-                heights.push(centerY);
+            if(!Number.isFinite(centerY)) continue;
+
+            // Prefer horizontal faces near the bridge center.
+            if(Math.abs(centerX) < MODEL_WIDTH*0.10){
+                centralHeights.push(centerY);
+            }
+
+            // Wider fallback region.
+            if(Math.abs(centerX) < MODEL_WIDTH*0.45){
+                fallbackHeights.push(centerY);
             }
         }
     }
 
-    if(heights.length){
+    if(centralHeights.length){
 
-        heights.sort((a,b)=>a-b);
+        // The highest central horizontal face is used
+        // as the estimated upper surface of the deck.
 
-        return heights[Math.floor(heights.length/2)];
-    }
+        centralHeights.sort((a,b)=>a-b);
 
-    if(vertexHeights.length){
+        const deckHeight =
+        centralHeights[centralHeights.length-1];
 
-        vertexHeights.sort((a,b)=>a-b);
-
-        console.warn(
-            "Using vertex-based deck height estimate."
+        console.log(
+            "Central deck face heights:",
+            centralHeights
         );
 
-        return vertexHeights[
-            Math.floor(vertexHeights.length/2)
+        return deckHeight;
+    }
+
+    if(fallbackHeights.length){
+
+        fallbackHeights.sort((a,b)=>a-b);
+
+        console.warn(
+            "Using wider bridge area to estimate deck height."
+        );
+
+        return fallbackHeights[
+            Math.floor(fallbackHeights.length/2)
         ];
     }
 
@@ -916,25 +889,26 @@ function positionJoint(wrapper,meshes,side){
         );
     }
 
-    // Restore the original correct joint size.
+    // Keep the original joint size calculation.
     const targetWidth =
-        bridgeDeckWidthLocal * 0.90;
+    bridgeDeckWidthLocal * 0.90;
 
     const scale =
-        targetWidth / size.z;
+    targetWidth / size.z;
 
     wrapper.scaling.setAll(scale);
 
     const scaledSize = size.scale(scale);
 
-    // Correct bridge-side placement.
+    // Place each joint on its correct bridge half.
     const targetCenterX =
-        side === "left"
-        ? -BASE_CLOSING_OFFSET + scaledSize.x/2
-        : BASE_CLOSING_OFFSET - scaledSize.x/2;
+    side === "left"
+    ? -BASE_CLOSING_OFFSET + scaledSize.x/2
+    : BASE_CLOSING_OFFSET - scaledSize.x/2;
 
+    // Place the joint so its bottom meets the deck top.
     const targetCenterY =
-        bridgeDeckLocalY - scaledSize.y/;
+    bridgeDeckLocalY - scaledSize.y/2;
 
     const targetCenterZ = 0;
 
@@ -949,6 +923,7 @@ function positionJoint(wrapper,meshes,side){
     console.log(side+" joint scale:",scale);
     console.log(side+" joint position:",wrapper.position);
 }
+
 // ========================================
 // LOAD MODELS
 // ========================================
@@ -991,17 +966,13 @@ try{
     const width = maxX-minX;
 
     if(width <= 0){
-
-        throw new Error(
-            "Invalid bridge dimensions."
-        );
+        throw new Error("Invalid bridge dimensions.");
     }
 
-    // Store the bridge's width before scaling.
+    // Store bridge width before scaling.
     bridgeDeckWidthLocal = maxZ-minZ;
 
     // Normalize bridge length.
-
     const modelScale = MODEL_WIDTH/width;
 
     bridgeRoot.scaling.set(
@@ -1019,7 +990,6 @@ try{
     bridgeRoot.computeWorldMatrix(true);
 
     // Detect deck height.
-
     bridgeDeckLocalY =
     findDeckSurfaceY(bridgeMeshes);
 
@@ -1029,17 +999,14 @@ try{
     );
 
     // Split bridge.
-
     status.textContent = "Separating bridge halves...";
 
     splitBridgeGeometry(bridgeMeshes);
 
     bridgeReady = true;
-
     updateSimulation();
 
     // Load left joint.
-
     status.textContent = "Loading left joint...";
 
     const leftMeshes = await importJoint(
@@ -1048,7 +1015,6 @@ try{
     );
 
     // Load right joint.
-
     status.textContent = "Loading right joint...";
 
     const rightMeshes = await importJoint(
@@ -1057,7 +1023,6 @@ try{
     );
 
     // Position both joints.
-
     status.textContent = "Positioning interlocking joints...";
 
     positionJoint(
@@ -1073,7 +1038,6 @@ try{
     );
 
     modelsReady = true;
-
     updateSimulation();
 
     status.textContent =
@@ -1124,8 +1088,7 @@ function updateSimulation(){
     VISUAL_AMPLIFICATION/2;
 
     // Move bridge halves.
-    // Joint wrappers follow because they are parented
-    // to their respective bridge halves.
+    // Joint wrappers follow their respective halves.
 
     if(bridgeReady){
 
@@ -1205,12 +1168,10 @@ document.getElementById("resetButton").addEventListener(
 updateSimulation();
 
 engine.runRenderLoop(function(){
-
     scene.render();
 });
 
 window.addEventListener("resize",function(){
-
     engine.resize();
 });
 

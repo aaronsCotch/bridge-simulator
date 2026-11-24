@@ -869,54 +869,52 @@ function positionJoint(wrapper, meshes, side) {
     wrapper.scaling.setAll(1);
     wrapper.position.set(0, 0, 0);
 
-    // Rotate the joints toward the center gap.
-   if (side === "right") {
+// Rotate the joints toward the center gap.
+if (side === "left") {
     wrapper.rotation.y = Math.PI;
 }
 
-if (side === "left") {
+if (side === "right") {
     wrapper.rotation.y = 0;
 }
-    
-    wrapper.computeWorldMatrix(true);
 
-    const bounds = getJointLocalBounds(wrapper, meshes);
+wrapper.computeWorldMatrix(true);
 
-    const size = bounds.size;
-    const center = bounds.center;
+const bounds = getJointLocalBounds(wrapper, meshes);
 
-    if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
-        throw new Error(side + " joint has invalid dimensions.");
-    }
+const size = bounds.size;
+const center = bounds.center;
 
-    const targetWidth = bridgeDeckWidthLocal * 0.90;
-    const scale = targetWidth / size.z;
+if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
+    throw new Error(side + " joint has invalid dimensions.");
+}
 
-    wrapper.scaling.setAll(scale);
+const targetWidth = bridgeDeckWidthLocal * 0.90;
+const scale = targetWidth / size.z;
 
-    const scaledSize = size.scale(scale);
+wrapper.scaling.setAll(scale);
 
-    const targetCenterX =
-        side === "left"
-        ? -BASE_CLOSING_OFFSET + scaledSize.x / 2
-        : BASE_CLOSING_OFFSET - scaledSize.x / 2 + scaledSize.x * 0.05;
+const scaledSize = size.scale(scale);
 
-    const targetCenterY =
-        bridgeDeckLocalY - scaledSize.y / 4 - 2;
+const targetCenterX =
+    side === "left"
+    ? -BASE_CLOSING_OFFSET + scaledSize.x / 2
+    : BASE_CLOSING_OFFSET - scaledSize.x / 2 + scaledSize.x * 0.05;
 
-    const direction = side === "left" ? 1 : -1;
+const targetCenterY =
+    bridgeDeckLocalY - scaledSize.y / 4 - 2;
 
-   wrapper.position.set(
+const direction = side === "left" ? 1 : -1;
+
+wrapper.position.set(
     targetCenterX + direction * center.x * scale,
     targetCenterY - center.y * scale,
     0
 );
 
-    wrapper.computeWorldMatrix(true);
+wrapper.computeWorldMatrix(true);
 
-    console.log(side + " joint position:", wrapper.position);
-}
-
+console.log(side + " joint position:", wrapper.position);
 // ========================================
 // LOAD MODELS
 // ========================================

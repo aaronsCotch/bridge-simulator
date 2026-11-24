@@ -896,8 +896,8 @@ function positionJoint(wrapper, meshes, side) {
 
     const scaledSize = size.scale(scale);
 
-// Move both joints inward toward the center gap.
-const JOINT_INWARD_OFFSET = 0.1;
+// Move both joints toward the center gap.
+const JOINT_INWARD_OFFSET = 1.0;
 
 const targetCenterX =
     side === "left"

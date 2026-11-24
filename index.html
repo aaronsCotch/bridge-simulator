@@ -339,8 +339,8 @@ const rightJointRoot = new BABYLON.TransformNode(
     scene
 );
 
-leftJointRoot.parent = leftBridgeRoot;
-rightJointRoot.parent = rightBridgeRoot;
+leftJointRoot.parent = rightBridgeRoot;
+rightJointRoot.parent = leftBridgeRoot;
 
 // ========================================
 // STATE

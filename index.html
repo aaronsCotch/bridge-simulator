@@ -589,6 +589,20 @@ async function importJoint(filename,wrapper){
         console.log("MIN:", bounds.minimumWorld);
         console.log("MAX:", bounds.maximumWorld);
         console.log("SIZE:", bounds.maximumWorld.subtract(bounds.minimumWorld));
+        const size = bounds.maximumWorld.subtract(bounds.minimumWorld);
+
+        const info = document.createElement("div");
+        info.style.color = "white";
+        info.style.fontSize = "12px";
+        info.style.background = "#222";
+        info.style.padding = "6px";
+        info.textContent =
+            mesh.name + " SIZE: X=" +
+            size.x.toFixed(3) +
+            " Y=" + size.y.toFixed(3) +
+            " Z=" + size.z.toFixed(3);
+
+document.body.appendChild(info);
     }
 
     return {
@@ -938,23 +952,7 @@ function positionJoint(wrapper, meshes, side) {
 
     console.log(side + " joint test position:", wrapper.position);
     console.log(side + " joint meshes:", meshes);
-}function positionJoint(wrapper, meshes, side) {
 
-    const JOINT_SCALE = 0.01;
-
-    wrapper.position.set(0, 0, 0);
-
-    wrapper.scaling.set(
-        JOINT_SCALE,
-        JOINT_SCALE,
-        JOINT_SCALE
-    );
-
-    wrapper.computeWorldMatrix(true);
-
-    console.log(side + " joint test position:", wrapper.position);
-    console.log(side + " joint meshes:", meshes);
-}
 
 // ========================================
 // LOAD MODELS

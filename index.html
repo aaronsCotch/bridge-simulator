@@ -896,15 +896,14 @@ function positionJoint(wrapper, meshes, side) {
 
     const scaledSize = size.scale(scale);
 
-// Move both joints toward the center gap.
+// Move both joints inward toward the center gap.
 const JOINT_INWARD_OFFSET = 0.1;
 
 const targetCenterX =
     side === "left"
-    ? -scaledSize.x / 2 + JOINT_INWARD_OFFSET
+    ? -scaledSize.x / 2 - JOINT_INWARD_OFFSET
     : BASE_CLOSING_OFFSET - scaledSize.x / 2
-      + scaledSize.x * 0.05 - JOINT_INWARD_OFFSET;
-
+      + scaledSize.x * 0.05 + JOINT_INWARD_OFFSET;
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2;
 

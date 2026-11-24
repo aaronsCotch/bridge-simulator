@@ -706,7 +706,7 @@ function findDeckSurfaceY(meshes){
 
             if(!Number.isFinite(centerY)) continue;
 
-            // Prefer horizontal faces near the bridge center.
+            // Collect faces near the bridge center.
             if(Math.abs(centerX) < MODEL_WIDTH*0.10){
                 centralHeights.push(centerY);
             }
@@ -720,17 +720,19 @@ function findDeckSurfaceY(meshes){
 
     if(centralHeights.length){
 
-        // The highest central horizontal face is used
-        // as the estimated upper surface of the deck.
-
         centralHeights.sort((a,b)=>a-b);
 
-        const deckHeight =
-        centralHeights[centralHeights.length-1];
+        // Use the lowest central horizontal face.
+        const deckHeight = centralHeights[0];
 
         console.log(
-            "Central deck face heights:",
+            "Central horizontal face heights:",
             centralHeights
+        );
+
+        console.log(
+            "Selected deck height:",
+            deckHeight
         );
 
         return deckHeight;
@@ -755,7 +757,6 @@ function findDeckSurfaceY(meshes){
 
     return 0;
 }
-
 // ========================================
 // GET JOINT BOUNDS IN WRAPPER SPACE
 // ========================================

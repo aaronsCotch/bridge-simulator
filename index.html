@@ -112,7 +112,7 @@ button{
 
 <header>
 <h1>Suspension Bridge Expansion Simulation</h1>
-<p>Physics 2 | Thermal Expansion and Contraction</p>
+<p>Physics 2 | Linear Thermal Expansion at a Center Joint</p>
 </header>
 
 <div class="container">
@@ -123,7 +123,7 @@ button{
 
 <h2>Simulation Controls</h2>
 
-<label for="temperature">Temperature</label>
+<label for="temperature">Temperature Control</label>
 <input type="range" id="temperature" min="-20" max="60" value="20">
 <h3 id="temperatureValue">20 °C</h3>
 
@@ -149,7 +149,7 @@ button{
 <p>Joint Movement</p>
 <h3 id="jointMovement">0.000 mm per side</h3>
 
-<p>Mechanical Adjustment</p>
+<p>Mechanical Joint Adjustment</p>
 <h3 id="mechanicalResult">0 mm</h3>
 
 <p>Material Coefficient</p>
@@ -157,6 +157,10 @@ button{
 
 <p>Calculated Gap Change</p>
 <h3 id="gap">0.000 mm</h3>
+
+<p class="small">
+Positive gap change opens the joint; negative closes it.
+</p>
 
 <p id="status" class="status">Preparing simulation...</p>
 
@@ -170,9 +174,11 @@ Waiting for deck height...
 
 <p class="small">
 Reference temperature: 20°C<br>
-Bridge length: 50 meters<br>
+Assumed bridge length: 50 meters (25 m per half)<br>
+Assumption: fixed outer supports and a free center joint<br>
 Formula: ΔL = α × L₀ × ΔT<br>
-Visual movement is amplified for demonstration.
+At fixed supports, warming ΔL closes the center gap by ΔL.<br>
+Visual movement is amplified 30× for demonstration.
 </p>
 
 </div>
@@ -1075,25 +1081,32 @@ function updateSimulation(){
     const deltaT =
     temperature-REFERENCE_TEMP;
 
-    const deltaL =
+    const wholeDeckExpansion =
     alpha*BRIDGE_LENGTH*deltaT;
 
-    const deltaLmm =
-    deltaL*1000;
+    const wholeDeckExpansionMm =
+    wholeDeckExpansion*1000;
 
+    // Positive mechanical values open the center joint.
+    // Warming expands toward fixed outer supports and closes the joint.
     const totalGapChangeMm =
-    deltaLmm+mechanical;
+    mechanical-wholeDeckExpansionMm;
 
+    const movementPerSideMm =
+    totalGapChangeMm/2;
+
+    // This converts half-span physical movement to amplified model units.
     const movementPerSide =
-    (totalGapChangeMm/1000/BRIDGE_LENGTH)*
+    (movementPerSideMm/1000/(BRIDGE_LENGTH/2))*
     MODEL_WIDTH*
-    VISUAL_AMPLIFICATION/2;
+    VISUAL_AMPLIFICATION;
 
     // Move bridge halves.
     // Joint wrappers follow their respective halves.
 
     if(bridgeReady){
 
+        // Positive gap change moves each side outward.
         leftBridgeRoot.position.x =
     -BASE_CLOSING_OFFSET + 0.5 - movementPerSide;
 
@@ -1107,25 +1120,25 @@ function updateSimulation(){
     temperature+" °C";
 
     document.getElementById("mechanicalValue").textContent =
-    mechanical+" mm";
+    (mechanical>0?"+":"")+mechanical+" mm";
 
     document.getElementById("expansion").textContent =
-    deltaLmm.toFixed(3)+" mm";
+    (wholeDeckExpansionMm>0?"+":"")+wholeDeckExpansionMm.toFixed(3)+" mm";
 
     document.getElementById("temperatureChange").textContent =
     (deltaT>0?"+":"")+deltaT+" °C";
 
     document.getElementById("jointMovement").textContent =
-    (totalGapChangeMm/2).toFixed(3)+" mm per side";
+    (movementPerSideMm>0?"+":"")+movementPerSideMm.toFixed(3)+" mm per side";
 
     document.getElementById("mechanicalResult").textContent =
-    mechanical+" mm";
+    (mechanical>0?"+":"")+mechanical+" mm";
 
     document.getElementById("coefficient").textContent =
     alpha.toExponential(2)+" /°C";
 
     document.getElementById("gap").textContent =
-    totalGapChangeMm.toFixed(3)+" mm";
+    (totalGapChangeMm>0?"+":"")+totalGapChangeMm.toFixed(3)+" mm";
 }
 
 // ========================================

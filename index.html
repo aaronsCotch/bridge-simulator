@@ -1007,8 +1007,11 @@ try{
     // Detect deck height.
     bridgeDeckLocalY =
     findDeckSurfaceY(bridgeMeshes);
-    document.getElementById("debugHeight").textContent =
-    "Detected deck height: " + bridgeDeckLocalY;
+   document.getElementById("debugHeight").textContent =
+    "Deck height: " + bridgeDeckLocalY +
+    " | Lowest Y: " + lowestY +
+    " | Highest Y: " + highestY +
+    " | Central faces: " + centralHeights.length;
     status.textContent =
     "Detected deck height: " + bridgeDeckLocalY.toFixed(4);
     

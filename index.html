@@ -647,6 +647,9 @@ function findDeckSurfaceY(meshes){
     const centralHeights = [];
     const fallbackHeights = [];
 
+    let lowestY = Infinity;
+    let highestY = -Infinity;
+    
     for(const mesh of meshes){
 
         if(!mesh || mesh.isDisposed()) continue;
@@ -706,6 +709,9 @@ function findDeckSurfaceY(meshes){
 
             if(!Number.isFinite(centerY)) continue;
 
+            lowestY = Math.min(lowestY, centerY);
+            highestY = Math.max(highestY, centerY);
+            
             // Collect faces near the bridge center.
             if(Math.abs(centerX) < MODEL_WIDTH*0.10){
                 centralHeights.push(centerY);
@@ -717,7 +723,9 @@ function findDeckSurfaceY(meshes){
             }
         }
     }
-
+console.log("BRIDGE LOWEST Y:", lowestY);
+console.log("BRIDGE HIGHEST Y:", highestY);
+console.log("CENTRAL FACE COUNT:", centralHeights.length);
     if(centralHeights.length){
 
         centralHeights.sort((a,b)=>a-b);

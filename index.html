@@ -1004,13 +1004,20 @@ const JOINT_INWARD_OFFSET = 0.1;
 const targetCenterX =
     side === "left"
     ? -scaledSize.x / 2 - JOINT_INWARD_OFFSET
+<<<<<<< HEAD
     : BASE_CLOSING_OFFSET - scaledSize.x / 2
       + scaledSize.x * 0.05 - JOINT_INWARD_OFFSET;
     const targetCenterY =
         bridgeDeckLocalY - scaledSize.y / 4 - 2 +
         (side === "left" ? scaledSize.y * 0.025 : 0);
+=======
+   : BASE_CLOSING_OFFSET - scaledSize.x / 2
+  + scaledSize.x * 0.05 - JOINT_INWARD_OFFSET - 0.2;
+    const targetCenterY =
+        bridgeDeckLocalY - scaledSize.y / 4 - 1.5;
+>>>>>>> 06c8a5444ccc4ff21454e30b948b835ea552892e
 
-    const direction = side === "left" ? 1 : -1;
+    const direction = side === "left" ? 1 : -0.9;
 
     wrapper.position.set(
         targetCenterX + direction * center.x * scale,
@@ -1200,11 +1207,21 @@ function updateSimulation(){
 
     if(bridgeReady){
 
+<<<<<<< HEAD
         leftBridgeRoot.position.x =
         -movementPerSide;
 
         rightBridgeRoot.position.x =
         movementPerSide;
+=======
+       const BRIDGE_CLOSING_ADJUSTMENT = 1.5;
+
+leftBridgeRoot.position.x =
+    -BASE_CLOSING_OFFSET + 0.5 + BRIDGE_CLOSING_ADJUSTMENT - movementPerSide;
+
+rightBridgeRoot.position.x =
+    BASE_CLOSING_OFFSET - BRIDGE_CLOSING_ADJUSTMENT + movementPerSide;
+>>>>>>> 06c8a5444ccc4ff21454e30b948b835ea552892e
     }
 
     // Update displayed values.

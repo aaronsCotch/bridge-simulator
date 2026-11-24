@@ -916,11 +916,11 @@ function positionJoint(wrapper,meshes,side){
 
     const targetCenterZ = 0;
 
-    wrapper.position.set(
-        targetCenterX - center.x*scale,
-        targetCenterY - center.y*scale,
-        targetCenterZ - center.z*scale
-    );
+ wrapper.position.set(
+    targetCenterX + center.x*scale,
+    targetCenterY - center.y*scale,
+    targetCenterZ + center.z*scale
+);
 
     wrapper.computeWorldMatrix(true);
 

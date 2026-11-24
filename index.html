@@ -351,7 +351,7 @@ let bridgeReady = false;
 let modelsReady = false;
 
 let bridgeDeckLocalY = null;
-
+let bridgeDeckWidthLocal = null;
 // ========================================
 // COORDINATE CONVERSION
 // ========================================
@@ -528,27 +528,23 @@ async function importBridge(filename,parent){
 // IMPORT JOINTS
 // ========================================
 
-async function importJoint(filename,wrapper){
+async function importJoint(filename, wrapper) {
 
-    const result =
-    await BABYLON.SceneLoader.ImportMeshAsync(
+    const result = await BABYLON.SceneLoader.ImportMeshAsync(
         null,
         BASE_URL,
         filename,
         scene
     );
 
-    const meshes = result.meshes.filter(mesh=>
+    const meshes = result.meshes.filter(mesh =>
         mesh &&
         mesh.getTotalVertices &&
-        mesh.getTotalVertices()>0
+        mesh.getTotalVertices() > 0
     );
 
-    if(!meshes.length){
-
-        throw new Error(
-            "No geometry found in "+filename
-        );
+    if (!meshes.length) {
+        throw new Error("No geometry found in " + filename);
     }
 
     const allNodes = [
@@ -558,33 +554,38 @@ async function importJoint(filename,wrapper){
 
     const nodeSet = new Set(allNodes);
 
-    const roots = allNodes.filter(node=>
+    const roots = allNodes.filter(node =>
         !node.parent || !nodeSet.has(node.parent)
     );
+
+    // Attach the complete imported model hierarchy.
+    for (const root of roots) {
+        root.setParent(wrapper);
+    }
+
+    wrapper.computeWorldMatrix(true);
+
+    for (const mesh of meshes) {
+        mesh.computeWorldMatrix(true);
+        mesh.isVisible = true;
+        mesh.setEnabled(true);
+    }
+
+    return {
+        meshes,
+        roots
+    };
+}
 
     // Keep the imported model hierarchy intact.
 
     for(const root of roots){
 
-        root.setParent = (wrapper);
+        root.setParent(wrapper);
     }
 
     wrapper.computeWorldMatrix(true);
 
-for (const mesh of meshes) {
-    mesh.computeWorldMatrix(true);
-
-    const box = mesh.getBoundingInfo().boundingBox;
-
-    console.log(
-        side,
-        mesh.name,
-        "CENTER:",
-        box.centerWorld,
-        "SIZE:",
-        box.extendSizeWorld.scale(2)
-    );
-}
 
     
     for(const mesh of meshes){
@@ -960,20 +961,11 @@ function findDeckSurfaceY(meshes){
 
 function positionJoint(wrapper, meshes, side) {
 
-    // Temporary scale for checking the model.
-    const JOINT_SCALE = 0.001;
+    if (!bridgeDeckWidthLocal || !bridgeDeckLocalY) {
+        throw new Error("Bridge deck dimensions are not ready.");
+    }
 
-    wrapper.position.set(0, 5, 0);
-
-    wrapper.scaling.set(
-        JOINT_SCALE,
-        JOINT_SCALE,
-        JOINT_SCALE
-    );
-
-    wrapper.computeWorldMatrix(true);
-
-    // Calculate the combined joint dimensions.
+    // Measure the joint in bridge-root coordinates.
     let min = new BABYLON.Vector3(
         Infinity, Infinity, Infinity
     );
@@ -982,28 +974,78 @@ function positionJoint(wrapper, meshes, side) {
         -Infinity, -Infinity, -Infinity
     );
 
+    wrapper.scaling.setAll(1);
+    wrapper.position.set(0, 0, 0);
+    wrapper.computeWorldMatrix(true);
+
     for (const mesh of meshes) {
 
         mesh.computeWorldMatrix(true);
 
-        const box =
-            mesh.getBoundingInfo().boundingBox;
+        const box = mesh.getBoundingInfo().boundingBox;
 
         const corners = [
             new BABYLON.Vector3(box.minimumWorld.x, box.minimumWorld.y, box.minimumWorld.z),
+            new BABYLON.Vector3(box.minimumWorld.x, box.minimumWorld.y, box.maximumWorld.z),
+            new BABYLON.Vector3(box.minimumWorld.x, box.maximumWorld.y, box.minimumWorld.z),
+            new BABYLON.Vector3(box.minimumWorld.x, box.maximumWorld.y, box.maximumWorld.z),
+            new BABYLON.Vector3(box.maximumWorld.x, box.minimumWorld.y, box.minimumWorld.z),
+            new BABYLON.Vector3(box.maximumWorld.x, box.minimumWorld.y, box.maximumWorld.z),
+            new BABYLON.Vector3(box.maximumWorld.x, box.maximumWorld.y, box.minimumWorld.z),
             new BABYLON.Vector3(box.maximumWorld.x, box.maximumWorld.y, box.maximumWorld.z)
         ];
 
         for (const corner of corners) {
-            min = BABYLON.Vector3.Minimize(min, corner);
-            max = BABYLON.Vector3.Maximize(max, corner);
+
+            const p = worldToBridge(corner);
+
+            min = BABYLON.Vector3.Minimize(min, p);
+            max = BABYLON.Vector3.Maximize(max, p);
         }
     }
 
-    console.log(side + " JOINT TOTAL SIZE:", max.subtract(min));
-    console.log(side + " JOINT CENTER:", min.add(max).scale(0.5));
-}
+    const size = max.subtract(min);
+    const center = min.add(max).scale(0.5);
 
+    if (size.z <= 0 || size.x <= 0 || size.y <= 0) {
+        throw new Error(side + " joint has invalid dimensions.");
+    }
+
+    // Fit the long Z dimension to the bridge deck width.
+    const targetWidth = bridgeDeckWidthLocal * 0.90;
+    const scale = targetWidth / size.z;
+
+    wrapper.scaling.setAll(scale);
+
+    // Keep the joint body inside the deck.
+    const scaledSize = size.scale(scale);
+
+    const targetCenter = new BABYLON.Vector3(
+        side === "left"
+            ? -scaledSize.x / 2
+            : scaledSize.x / 2,
+
+        bridgeDeckLocalY - scaledSize.y * 0.35,
+
+        0
+    );
+
+    // Account for the bridge half's existing movement.
+    const parentPosition = wrapper.parent.position;
+
+    wrapper.position.set(
+        targetCenter.x - parentPosition.x - center.x * scale,
+        targetCenter.y - parentPosition.y - center.y * scale,
+        targetCenter.z - parentPosition.z - center.z * scale
+    );
+
+    wrapper.computeWorldMatrix(true);
+
+    console.log(side + " joint fitted.");
+    console.log(side + " joint original size:", size);
+    console.log(side + " joint scale:", scale);
+    console.log(side + " joint target:", targetCenter);
+}
 // ========================================
 // LOAD MODELS
 // ========================================
@@ -1043,7 +1085,8 @@ try{
     }
 
     const width=maxX-minX;
-
+bridgeDeckWidthLocal = maxZ-minZ;
+    
     if(width<=0){
 
         throw new Error(

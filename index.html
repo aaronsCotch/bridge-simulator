@@ -159,9 +159,11 @@ button{
 <h3 id="gap">0.000 mm</h3>
 
 <p id="status" class="status">Preparing simulation...</p>
+
 <p id="debugHeight" class="status">
-    Waiting for deck height...
+Waiting for deck height...
 </p>
+
 </div>
 
 <button id="resetButton">Reset Simulation</button>
@@ -209,6 +211,7 @@ const BASE_CLOSING_OFFSET = 0.35;
 
 const canvas = document.getElementById("renderCanvas");
 const status = document.getElementById("status");
+const debugHeight = document.getElementById("debugHeight");
 
 const temperatureSlider =
 document.getElementById("temperature");
@@ -647,9 +650,6 @@ function findDeckSurfaceY(meshes){
     const centralHeights = [];
     const fallbackHeights = [];
 
-    let lowestY = Infinity;
-    let highestY = -Infinity;
-    
     for(const mesh of meshes){
 
         if(!mesh || mesh.isDisposed()) continue;
@@ -698,8 +698,8 @@ function findDeckSurfaceY(meshes){
 
             normal.normalize();
 
-            // Only consider nearly horizontal faces.
-            if(Math.abs(normal.y) < 0.85) continue;
+            // Only upward-facing horizontal surfaces.
+            if(normal.y < 0.95) continue;
 
             const centerX =
             (points[0].x+points[1].x+points[2].x)/3;
@@ -709,62 +709,50 @@ function findDeckSurfaceY(meshes){
 
             if(!Number.isFinite(centerY)) continue;
 
-            lowestY = Math.min(lowestY, centerY);
-            highestY = Math.max(highestY, centerY);
-            
-            // Collect faces near the bridge center.
             if(Math.abs(centerX) < MODEL_WIDTH*0.10){
                 centralHeights.push(centerY);
             }
 
-            // Wider fallback region.
             if(Math.abs(centerX) < MODEL_WIDTH*0.45){
                 fallbackHeights.push(centerY);
             }
         }
     }
-console.log("BRIDGE LOWEST Y:", lowestY);
-console.log("BRIDGE HIGHEST Y:", highestY);
-console.log("CENTRAL FACE COUNT:", centralHeights.length);
-    if(centralHeights.length){
 
-        centralHeights.sort((a,b)=>a-b);
+    const heights = centralHeights.length
+        ? centralHeights
+        : fallbackHeights;
 
-        // Use the lowest central horizontal face.
-        const deckHeight = centralHeights[0];
-
-        console.log(
-            "Central horizontal face heights:",
-            centralHeights
+    if(!heights.length){
+        throw new Error(
+            "Could not detect an upward-facing deck surface."
         );
-
-        console.log(
-            "Selected deck height:",
-            deckHeight
-        );
-
-        return deckHeight;
     }
 
-    if(fallbackHeights.length){
+    heights.sort((a,b)=>a-b);
 
-        fallbackHeights.sort((a,b)=>a-b);
+    const middle = Math.floor(heights.length/2);
 
-        console.warn(
-            "Using wider bridge area to estimate deck height."
-        );
+    const deckHeight = heights.length % 2
+        ? heights[middle]
+        : (heights[middle-1]+heights[middle])/2;
 
-        return fallbackHeights[
-            Math.floor(fallbackHeights.length/2)
-        ];
-    }
+    const lowestY = heights[0];
+    const highestY = heights[heights.length-1];
 
-    console.warn(
-        "Deck height could not be detected. Using zero."
-    );
+    console.log("DECK HEIGHT:",deckHeight);
+    console.log("LOWEST FACE:",lowestY);
+    console.log("HIGHEST FACE:",highestY);
+    console.log("FACE COUNT:",heights.length);
 
-    return 0;
+    return {
+        deckHeight,
+        lowestY,
+        highestY,
+        faceCount:heights.length
+    };
 }
+
 // ========================================
 // GET JOINT BOUNDS IN WRAPPER SPACE
 // ========================================
@@ -917,13 +905,13 @@ function positionJoint(wrapper,meshes,side){
     ? -BASE_CLOSING_OFFSET + scaledSize.x/2
     : BASE_CLOSING_OFFSET - scaledSize.x/2;
 
-   // Place the bottom of the joint at the top of the bridge deck.
-const targetCenterY =
+    // Keep the current vertical positioning formula for testing.
+    const targetCenterY =
     bridgeDeckLocalY - scaledSize.y / 4;
 
-console.log("DECK HEIGHT:", bridgeDeckLocalY);
-console.log("JOINT HEIGHT:", scaledSize.y);
-console.log("JOINT TARGET Y:", targetCenterY);
+    console.log("DECK HEIGHT:",bridgeDeckLocalY);
+    console.log("JOINT HEIGHT:",scaledSize.y);
+    console.log("JOINT TARGET Y:",targetCenterY);
 
     const targetCenterZ = 0;
 
@@ -1004,21 +992,21 @@ try{
 
     bridgeRoot.computeWorldMatrix(true);
 
-    // Detect deck height.
-    bridgeDeckLocalY =
-    findDeckSurfaceY(bridgeMeshes);
-   document.getElementById("debugHeight").textContent =
-    "Deck height: " + bridgeDeckLocalY +
-    " | Lowest Y: " + lowestY +
-    " | Highest Y: " + highestY +
-    " | Central faces: " + centralHeights.length;
+    // Detect deck height and diagnostics.
+    const deckData = findDeckSurfaceY(bridgeMeshes);
+
+    bridgeDeckLocalY = deckData.deckHeight;
+
+    debugHeight.textContent =
+        "Deck: " + deckData.deckHeight.toFixed(4) +
+        " | Lowest: " + deckData.lowestY.toFixed(4) +
+        " | Highest: " + deckData.highestY.toFixed(4) +
+        " | Faces: " + deckData.faceCount;
+
     status.textContent =
     "Detected deck height: " + bridgeDeckLocalY.toFixed(4);
-    
-    console.log(
-        "Detected bridge deck height:",
-        bridgeDeckLocalY
-    );
+
+    console.log("DECK DATA:",deckData);
 
     // Split bridge.
     status.textContent = "Separating bridge halves...";

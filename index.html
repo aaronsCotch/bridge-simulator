@@ -891,17 +891,13 @@ function positionJoint(wrapper,meshes,side){
         !Number.isFinite(bridgeDeckWidthLocal) ||
         !Number.isFinite(bridgeDeckLocalY)
     ){
-
         throw new Error(
             "Bridge deck dimensions are not ready."
         );
     }
 
-    // Start from an unscaled wrapper.
-
-    wrapper.scaling.setAll(1);
+    // Preserve the existing joint size.
     wrapper.position.set(0,0,0);
-
     wrapper.computeWorldMatrix(true);
 
     const bounds =
@@ -915,48 +911,27 @@ function positionJoint(wrapper,meshes,side){
         size.y <= 0 ||
         size.z <= 0
     ){
-
         throw new Error(
             side+" joint has invalid dimensions."
         );
     }
 
-    /*
-       The joint model's long dimension is Z.
-       Fit that dimension across the bridge deck.
-    */
+    const scale = wrapper.scaling.x;
 
-    const targetWidth =
-    bridgeDeckWidthLocal * 0.90;
+    const scaledSize = size.scale(scale);
 
-    const scale =
-    targetWidth / size.z;
-
-    wrapper.scaling.setAll(scale);
-
-    const scaledSize =
-    size.scale(scale);
-
-    /*
-       Place each joint beside the center split.
-
-       The left joint is attached to the left bridge.
-       The right joint is attached to the right bridge.
-    */
-
+    // Left belongs on negative X.
+    // Right belongs on positive X.
     const targetCenterX =
-    side === "left"
-    ? BASE_CLOSING_OFFSET - scaledSize.x/2
-    : -BASE_CLOSING_OFFSET + scaledSize.x/2;
+        side === "left"
+        ? -BASE_CLOSING_OFFSET + scaledSize.x/2
+        : BASE_CLOSING_OFFSET - scaledSize.x/2;
 
-    // Keep the joint body inside the deck.
+    // Keep the joint embedded in the deck.
     const targetCenterY =
-    bridgeDeckLocalY - scaledSize.y/2;
+        bridgeDeckLocalY - scaledSize.y/2;
 
     const targetCenterZ = 0;
-
-    // Move the wrapper so its measured center
-    // reaches the desired position.
 
     wrapper.position.set(
         targetCenterX - center.x*scale,
@@ -966,9 +941,6 @@ function positionJoint(wrapper,meshes,side){
 
     wrapper.computeWorldMatrix(true);
 
-    console.log(side+" joint loaded.");
-    console.log(side+" joint dimensions:",size);
-    console.log(side+" joint scale:",scale);
     console.log(side+" joint position:",wrapper.position);
 }
 

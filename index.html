@@ -870,9 +870,13 @@ function positionJoint(wrapper, meshes, side) {
     wrapper.position.set(0, 0, 0);
 
     // Rotate the joints toward the center gap.
-   wrapper.rotation.y =
-    side === "left" ? Math.PI :
-    side === "right" ? Math.PI : 0 ;
+   if (side === "left") {
+    wrapper.rotation.y = Math.PI;
+}
+
+if (side === "right") {
+    wrapper.rotation.y = 0;
+}
     
     wrapper.computeWorldMatrix(true);
 
